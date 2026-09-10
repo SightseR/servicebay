@@ -1,0 +1,220 @@
+// ServiceBay — Prisma schema (Chunk 1)
+// IDs are String @default(uuid()) → TEXT columns, per project convention.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------- Enums
+
+enum Role {
+  MANAGER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+}
+
+enum Gearbox {
+  AUTO
+  MANUAL
+}
+
+enum MotivePower {
+  PETROL
+  DIESEL
+  GAS
+  HYBRID
+  PHEV
+  HEV
+}
+
+enum DriveMode {
+  FRONT
+  REAR
+  FOUR_WD
+}
+
+/// Form-builder field types. CHECKLIST reproduces the legacy Done/Urgent/Later line.
+enum FieldType {
+  CHECKLIST
+  SINGLE_CHOICE
+  DROPDOWN
+  MULTI_CHOICE
+  TEXT
+  TEXTAREA
+  NUMBER
+}
+
+// ---------------------------------------------------------------- Users
+
+model User {
+  id               String     @id @default(uuid())
+  email            String     @unique
+  passwordHash     String
+  displayName      String
+  role             Role       @default(ADMIN)
+  status           UserStatus @default(PENDING)
+  refreshTokenHash String?
+  approvedById     String?
+  approvedAt       DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  approvedBy     User?           @relation("UserApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedUsers  User[]          @relation("UserApprovals")
+  createdRecords ServiceRecord[] @relation("RecordCreatedBy")
+  updatedRecords ServiceRecord[] @relation("RecordUpdatedBy")
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------------- Vehicles
+
+model Vehicle {
+  id          String       @id @default(uuid())
+  regNumber   String
+  /// upper-cased, whitespace-stripped regNumber; computed in service layer
+  regKey      String       @unique
+  brand       String
+  model       String
+  year        Int?
+  gearbox     Gearbox?
+  motivePower MotivePower?
+  driveMode   DriveMode?
+  ownerName   String?
+  ownerPhone  String?
+  ownerEmail  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  records ServiceRecord[]
+
+  @@index([ownerName])
+  @@index([ownerPhone])
+  @@index([brand])
+}
+
+// ---------------------------------------------------------------- Form builder
+
+model FormSection {
+  id        String   @id @default(uuid())
+  title     String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fields FormField[]
+
+  @@index([sortOrder])
+}
+
+model FormField {
+  id           String    @id @default(uuid())
+  sectionId    String
+  label        String
+  type         FieldType
+  required     Boolean   @default(false)
+  sortOrder    Int       @default(0)
+  active       Boolean   @default(true)
+  showInReport Boolean   @default(true)
+  /// type-specific settings, e.g. NUMBER: {unit:"%",min:0,max:100}; CHECKLIST: {allowNote:true}
+  config       Json      @default("{}")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  section FormSection       @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  options FormFieldOption[]
+  values  RecordValue[]
+
+  @@index([sectionId, sortOrder])
+}
+
+model FormFieldOption {
+  id        String  @id @default(uuid())
+  fieldId   String
+  label     String
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  field FormField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@index([fieldId, sortOrder])
+}
+
+// ---------------------------------------------------------------- Service records
+
+model ServiceRecord {
+  id           String       @id @default(uuid())
+  vehicleId    String
+  kilometers   Int?
+  /// snapshot of vehicle spec at the time of the visit
+  gearbox      Gearbox?
+  motivePower  MotivePower?
+  driveMode    DriveMode?
+  servicedAt   DateTime     @default(now())
+  createdById  String?
+  updatedById  String?
+  legacyId     String?      @unique
+  legacyUserId String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  vehicle   Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  createdBy User?         @relation("RecordCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?         @relation("RecordUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  values    RecordValue[]
+
+  @@index([vehicleId, servicedAt(sort: Desc)])
+  @@index([servicedAt(sort: Desc)])
+}
+
+/// One stored answer per (record, field). `value` shape depends on field type:
+///   CHECKLIST     {done, urgent, later, note?}
+///   SINGLE_CHOICE / DROPDOWN  {optionId, label}
+///   MULTI_CHOICE  {options:[{optionId,label}]}
+///   TEXT / TEXTAREA  {text}
+///   NUMBER        {number}
+model RecordValue {
+  id            String @id @default(uuid())
+  recordId      String
+  fieldId       String
+  value         Json
+  /// field label at time of saving, so reports survive later renames
+  labelSnapshot String
+
+  record ServiceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  field  FormField     @relation(fields: [fieldId], references: [id], onDelete: Restrict)
+
+  @@unique([recordId, fieldId])
+  @@index([fieldId])
+}
+
+// ---------------------------------------------------------------- Company profile (singleton, id = "default")
+
+model CompanyProfile {
+  id           String   @id @default("default")
+  companyName  String?
+  tagline      String?
+  addressLine1 String?
+  addressLine2 String?
+  postalCode   String?
+  city         String?
+  country      String?
+  phone        String?
+  email        String?
+  website      String?
+  businessId   String?
+  vatId        String?
+  logoPath     String?
+  updatedAt    DateTime @updatedAt
+}

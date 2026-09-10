@@ -1,0 +1,58 @@
+# ServiceBay — local development stack. Everything is reachable via nginx on http://localhost
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-servicebay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-servicebay}
+      POSTGRES_DB: ${POSTGRES_DB:-servicebay_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"          # host access for psql / migration scripts; 5433 avoids clashing with Luminara
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-servicebay} -d ${POSTGRES_DB:-servicebay_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      target: dev
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-servicebay}:${POSTGRES_PASSWORD:-servicebay}@postgres:5432/${POSTGRES_DB:-servicebay_db}?schema=public
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_PROXY: http://backend:3000
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./infra/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  pgdata:
+  uploads:
+  backend_node_modules:
+  frontend_node_modules:
