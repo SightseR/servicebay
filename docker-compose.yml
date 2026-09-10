@@ -1,4 +1,6 @@
-# ServiceBay — local development stack. Everything is reachable via nginx on http://localhost
+# ServiceBay — local development stack. Everything is reachable via nginx on http://localhost:8080
+# Source dirs are bind-mounted individually so host node_modules are never shadowed by the container.
+# After changing package.json: docker compose up -d --build <service>
 services:
   postgres:
     image: postgres:16-alpine
@@ -9,7 +11,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5433:5432"          # host access for psql / migration scripts; 5433 avoids clashing with Luminara
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-servicebay} -d ${POSTGRES_DB:-servicebay_db}"]
       interval: 5s
@@ -24,8 +26,11 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-servicebay}:${POSTGRES_PASSWORD:-servicebay}@postgres:5432/${POSTGRES_DB:-servicebay_db}?schema=public
     volumes:
-      - ./backend:/app
-      - backend_node_modules:/app/node_modules
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ./backend/nest-cli.json:/app/nest-cli.json
       - uploads:/app/uploads
     depends_on:
       postgres:
@@ -36,8 +41,13 @@ services:
     environment:
       VITE_API_PROXY: http://backend:3000
     volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json
     depends_on:
       - backend
 
@@ -54,5 +64,3 @@ services:
 volumes:
   pgdata:
   uploads:
-  backend_node_modules:
-  frontend_node_modules:

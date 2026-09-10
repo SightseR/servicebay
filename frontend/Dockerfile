@@ -5,4 +5,4 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 EXPOSE 5173
-CMD ["sh", "-c", "npm install --prefer-offline && npm run dev"]
+CMD ["npm", "run", "dev"]
