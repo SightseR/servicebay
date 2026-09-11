@@ -4,7 +4,7 @@ export function NumberField({ field, value, onChange }: { field: FormFieldDef; v
   return (
     <label className="block py-2">
       <span className="text-sm text-muted block mb-1">
-        {field.label}{field.required && ' *'}{field.config.unit && <span className="text-muted"> ({field.config.unit})</span>}
+        {field.labelEn}{field.required && ' *'}{field.config.unit && <span className="text-muted"> ({field.config.unit})</span>}
       </span>
       <input
         type="number"

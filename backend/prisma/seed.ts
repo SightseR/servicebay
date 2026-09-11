@@ -106,9 +106,9 @@ async function seedFormDefinition() {
   for (const [sIdx, s] of SECTIONS.entries()) {
     // Sections are matched by their legacy key stored on the first field's config;
     // simpler: match by title on first seed, then never touch again.
-    let section = await prisma.formSection.findFirst({ where: { title: s.title } });
+    let section = await prisma.formSection.findFirst({ where: { titleEn: s.title } });
     if (!section) {
-      section = await prisma.formSection.create({ data: { title: s.title, sortOrder: (sIdx + 1) * 10 } });
+      section = await prisma.formSection.create({ data: { titleEn: s.title, sortOrder: (sIdx + 1) * 10 } });
       console.log(`  + section "${s.title}"`);
     }
 
@@ -121,7 +121,7 @@ async function seedFormDefinition() {
       const field = await prisma.formField.create({
         data: {
           sectionId: section.id,
-          label: f.label,
+          labelEn: f.label,
           type: f.type,
           required: f.required ?? false,
           sortOrder: (fIdx + 1) * 10,
@@ -130,7 +130,7 @@ async function seedFormDefinition() {
       });
       if (f.options?.length) {
         await prisma.formFieldOption.createMany({
-          data: f.options.map((label, i) => ({ fieldId: field.id, label, sortOrder: (i + 1) * 10 })),
+          data: f.options.map((label, i) => ({ fieldId: field.id, labelEn: label, sortOrder: (i + 1) * 10 })),
         });
       }
     }

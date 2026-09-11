@@ -90,12 +90,12 @@ export function RecordPrintPage() {
         <div className="space-y-6">
           {report.sections.map((section) => (
             <div key={section.id}>
-              <h3 className="font-display text-lg border-b border-neutral-300 pb-1 mb-2">{section.title}</h3>
+              <h3 className="font-display text-lg border-b border-neutral-300 pb-1 mb-2">{section.titleEn}</h3>
               <table className="w-full text-sm">
                 <tbody>
                   {section.items.map((item) => (
                     <tr key={item.fieldId} className="border-b border-neutral-100 last:border-0">
-                      <td className="py-1.5 pr-4 align-top w-1/2">{item.label}</td>
+                      <td className="py-1.5 pr-4 align-top w-1/2">{item.labelEn}</td>
                       <td className="py-1.5 align-top text-neutral-700">
                         <span className="print:text-neutral-900"><ValueDisplay type={item.type} value={item.value} /></span>
                       </td>

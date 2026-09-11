@@ -107,7 +107,7 @@ export function InspectPage() {
 
             {sections.map((section) => (
               <div key={section.id} className="panel p-4">
-                <h2 className="text-lg mb-1">{section.title}</h2>
+                <h2 className="text-lg mb-1">{section.titleEn}</h2>
                 <div className="divide-y divide-steel">
                   {section.fields.map((field) => (
                     <div key={field.id}>

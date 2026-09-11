@@ -19,7 +19,7 @@ J='Content-Type: application/json'
 
 echo "== pre-clean"
 docker compose exec -T postgres psql -U "$PG_USER" -d "$PG_DB" -qc \
-  "DELETE FROM \"FormField\" WHERE \"sectionId\" IN (SELECT id FROM \"FormSection\" WHERE title='$TITLE'); DELETE FROM \"FormSection\" WHERE title='$TITLE';" >/dev/null
+  "DELETE FROM \"FormField\" WHERE \"sectionId\" IN (SELECT id FROM \"FormSection\" WHERE \"titleEn\"='$TITLE'); DELETE FROM \"FormSection\" WHERE \"titleEn\"='$TITLE';" >/dev/null
 ok "removed leftover smoke section"
 
 until curl -sf -o /dev/null "$API/health"; do sleep 2; done
@@ -33,21 +33,23 @@ check "seeded sections" "$(curl -s "$API/form/definition" -H "$A" | json length)
 check "seeded fields" "$(curl -s "$API/form/definition" -H "$A" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).reduce((n,s)=>n+s.fields.length,0)))")" "37"
 
 echo "== sections"
-SEC=$(curl -s -X POST "$API/form/sections" -H "$A" -H "$J" -d "{\"title\":\"$TITLE\"}" | json id)
+SEC=$(curl -s -X POST "$API/form/sections" -H "$A" -H "$J" -d "{\"titleEn\":\"$TITLE\",\"titleIt\":\"Sezione prova\"}" | json id)
 [ -n "$SEC" ] && ok "create section" || bad "create section"
 check "section appended last (sortOrder 60)" "$(curl -s "$API/form/definition" -H "$A" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).find(s=>s.id==='$SEC').sortOrder))")" "60"
-check "empty title 400" "$(code -X POST "$API/form/sections" -H "$A" -H "$J" -d '{"title":"   "}')" "400"
+check "empty title 400" "$(code -X POST "$API/form/sections" -H "$A" -H "$J" -d '{"titleEn":"   "}')" "400"
 
 echo "== fields"
-F_CHK=$(curl -s -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"label":"Coolant flush","type":"CHECKLIST","config":{"allowNote":true}}' | json id)
-F_NUM=$(curl -s -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"label":"Tyre tread","type":"NUMBER","config":{"unit":"mm","min":0,"max":12}}' | json id)
-F_DD=$(curl -s -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"label":"Tyre season","type":"DROPDOWN","options":[{"label":"Summer"},{"label":"Winter"},{"label":"All-season"}]}' | json id)
-F_TXT=$(curl -s -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"label":"Technician remark","type":"TEXT","config":{"maxLength":200}}' | json id)
+F_CHK=$(curl -s -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"labelEn":"Coolant flush","labelIt":"Lavaggio refrigerante","type":"CHECKLIST","config":{"allowNote":true}}' | json id)
+F_NUM=$(curl -s -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"labelEn":"Tyre tread","type":"NUMBER","config":{"unit":"mm","min":0,"max":12}}' | json id)
+F_DD=$(curl -s -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"labelEn":"Tyre season","type":"DROPDOWN","options":[{"labelEn":"Summer","labelIt":"Estate"},{"labelEn":"Winter"},{"labelEn":"All-season"}]}' | json id)
+F_TXT=$(curl -s -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"labelEn":"Technician remark","type":"TEXT","config":{"maxLength":200}}' | json id)
 [ -n "$F_CHK$F_NUM$F_DD$F_TXT" ] && ok "created 4 fields (checklist, number, dropdown, text)" || bad "field creation"
-check "dropdown without options 400" "$(code -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"label":"X","type":"DROPDOWN"}')" "400"
-check "wrong config key 400" "$(code -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"label":"X","type":"TEXT","config":{"unit":"%"}}')" "400"
-check "unknown type 400" "$(code -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"label":"X","type":"SLIDER"}')" "400"
+check "dropdown without options 400" "$(code -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"labelEn":"X","type":"DROPDOWN"}')" "400"
+check "wrong config key 400" "$(code -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"labelEn":"X","type":"TEXT","config":{"unit":"%"}}')" "400"
+check "unknown type 400" "$(code -X POST "$API/form/sections/$SEC/fields" -H "$A" -H "$J" -d '{"labelEn":"X","type":"SLIDER"}')" "400"
 check "dropdown has 3 options" "$(curl -s "$API/form/definition" -H "$A" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).find(s=>s.id==='$SEC').fields.find(f=>f.id==='$F_DD').options.length))")" "3"
+check "section carries both languages" "$(curl -s "$API/form/definition" -H "$A" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const s=JSON.parse(d).find(s=>s.id==='$SEC');console.log(s.titleEn+'|'+s.titleIt)})")" "$TITLE|Sezione prova"
+check "field with no Italian falls back cleanly (titleIt null, not empty string)" "$(curl -s "$API/form/definition" -H "$A" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const f=JSON.parse(d).find(s=>s.id==='$SEC').fields.find(f=>f.id==='$F_NUM');console.log(f.labelIt===null)})")" "true"
 
 echo "== update / reorder"
 check "type change TEXT→NUMBER (no values) 200" "$(code -X PATCH "$API/form/fields/$F_TXT" -H "$A" -H "$J" -d '{"type":"NUMBER","config":{"unit":"bar"}}')" "200"
@@ -58,10 +60,10 @@ check "inactive field hidden from definition" "$(curl -s "$API/form/definition" 
 check "…but visible with includeInactive" "$(curl -s "$API/form/definition?includeInactive=1" -H "$A" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).find(s=>s.id==='$SEC').fields.length))")" "4"
 
 echo "== options"
-OPT=$(curl -s -X POST "$API/form/fields/$F_DD/options" -H "$A" -H "$J" -d '{"label":"Studded"}' | json id)
+OPT=$(curl -s -X POST "$API/form/fields/$F_DD/options" -H "$A" -H "$J" -d '{"labelEn":"Studded"}' | json id)
 [ -n "$OPT" ] && ok "add option" || bad "add option"
-check "option on non-choice field 400" "$(code -X POST "$API/form/fields/$F_NUM/options" -H "$A" -H "$J" -d '{"label":"X"}')" "400"
-check "rename option 200" "$(code -X PATCH "$API/form/options/$OPT" -H "$A" -H "$J" -d '{"label":"Studded winter"}')" "200"
+check "option on non-choice field 400" "$(code -X POST "$API/form/fields/$F_NUM/options" -H "$A" -H "$J" -d '{"labelEn":"X"}')" "400"
+check "rename option 200" "$(code -X PATCH "$API/form/options/$OPT" -H "$A" -H "$J" -d '{"labelEn":"Studded winter"}')" "200"
 check "delete unused option 204" "$(code -X DELETE "$API/form/options/$OPT" -H "$A")" "204"
 
 echo "== delete guards"

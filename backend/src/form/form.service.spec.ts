@@ -33,20 +33,20 @@ describe('FormService', () => {
     beforeEach(() => prisma.formSection.findUnique.mockResolvedValue({ id: SEC }));
 
     it('appends after the highest sortOrder', async () => {
-      const f = await service.createField(SEC, { label: 'X', type: FieldType.TEXT });
+      const f = await service.createField(SEC, { labelEn: 'X', type: FieldType.TEXT });
       expect(f.sortOrder).toBe(30);
     });
     it('choice types need options', async () => {
-      await expect(service.createField(SEC, { label: 'X', type: FieldType.DROPDOWN })).rejects.toBeInstanceOf(BadRequestException);
-      const f = await service.createField(SEC, { label: 'X', type: FieldType.DROPDOWN, options: [{ label: 'A' }, { label: 'B' }] });
+      await expect(service.createField(SEC, { labelEn: 'X', type: FieldType.DROPDOWN })).rejects.toBeInstanceOf(BadRequestException);
+      const f = await service.createField(SEC, { labelEn: 'X', type: FieldType.DROPDOWN, options: [{ labelEn: 'A' }, { labelEn: 'B' }] });
       expect((f as any).options.create).toHaveLength(2);
       expect((f as any).options.create[1].sortOrder).toBe(20);
     });
     it('non-choice types reject options', async () => {
-      await expect(service.createField(SEC, { label: 'X', type: FieldType.NUMBER, options: [{ label: 'A' }] })).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.createField(SEC, { labelEn: 'X', type: FieldType.NUMBER, options: [{ labelEn: 'A' }] })).rejects.toBeInstanceOf(BadRequestException);
     });
     it('validates config for the type', async () => {
-      await expect(service.createField(SEC, { label: 'X', type: FieldType.TEXT, config: { unit: '%' } })).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.createField(SEC, { labelEn: 'X', type: FieldType.TEXT, config: { unit: '%' } })).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 

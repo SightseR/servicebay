@@ -20,7 +20,7 @@ J='Content-Type: application/json'
 
 echo "== pre-clean"
 docker compose exec -T postgres psql -U "$PG_USER" -d "$PG_DB" -qc \
-  "DELETE FROM \"ServiceRecord\" WHERE \"vehicleId\" IN (SELECT id FROM \"Vehicle\" WHERE \"regKey\"='$REGKEY'); DELETE FROM \"Vehicle\" WHERE \"regKey\"='$REGKEY'; DELETE FROM \"User\" WHERE email='$ADM_EMAIL';" >/dev/null
+  "DELETE FROM \"ServiceRecord\" WHERE \"vehicleId\" IN (SELECT id FROM \"Vehicle\" WHERE \"regKey\"='$REGKEY' OR \"regKey\"='SMK777'); DELETE FROM \"Vehicle\" WHERE \"regKey\"='$REGKEY' OR \"regKey\"='SMK777'; DELETE FROM \"User\" WHERE email='$ADM_EMAIL'; DELETE FROM \"FormField\" WHERE \"sectionId\" IN (SELECT id FROM \"FormSection\" WHERE \"titleEn\"='Smoke bilingual section'); DELETE FROM \"FormSection\" WHERE \"titleEn\"='Smoke bilingual section';" >/dev/null
 ok "clean"
 until curl -sf -o /dev/null "$API/health"; do sleep 2; done
 
@@ -73,7 +73,7 @@ check "4 values stored" "$(echo "$R" | jq_ 'o.values.length')" "4"
 check "grouped into 4 sections" "$(echo "$R" | jq_ 'o.sections.length')" "4"
 check "number coerced from string" "$(echo "$R" | jq_ "o.values.find(v=>v.fieldId==='$F_BFL').value.number")" "80"
 check "note trimmed" "$(echo "$R" | jq_ "o.values.find(v=>v.fieldId==='$F_NOTE').value.text")" "Smoke note"
-check "label snapshot present" "$(echo "$R" | jq_ "o.sections.find(s=>s.title==='Engine services').items[0].label")" "Oil change"
+check "label snapshot present (EN)" "$(echo "$R" | jq_ "o.sections.find(s=>s.titleEn==='Engine services').items[0].labelEn")" "Oil change"
 
 echo "== validation"
 check "brake > 100 → 400" "$(code -X POST "$API/records" -H "$A" -H "$J" -d "{\"vehicleId\":\"$VID\",\"values\":[{\"fieldId\":\"$F_BFL\",\"value\":150}]}")" "400"
@@ -116,5 +116,21 @@ check "vehicle with record → 409" "$(code -X DELETE "$API/vehicles/$VID" -H "$
 check "admin deletes own record 204" "$(code -X DELETE "$API/records/$RID" -H "$A")" "204"
 check "vehicle now deletable 204" "$(code -X DELETE "$API/vehicles/$VID" -H "$A")" "204"
 curl -s -o /dev/null -X DELETE "$API/vehicles/$VID2" -H "$M"
+
+echo "== bilingual labels (Chunk 11)"
+BVID=$(curl -s -X POST "$API/vehicles" -H "$A" -H "$J" -d '{"regNumber":"SMK 777","brand":"Volvo","model":"V60"}' | jq_ 'o.id')
+BSEC=$(curl -s -X POST "$API/form/sections" -H "$A" -H "$J" -d '{"titleEn":"Smoke bilingual section","titleIt":"Sezione bilingue prova"}' | jq_ 'o.id')
+BFLD=$(curl -s -X POST "$API/form/sections/$BSEC/fields" -H "$A" -H "$J" -d '{"labelEn":"Smoke bilingual field","labelIt":"Campo bilingue prova","type":"CHECKLIST"}' | jq_ 'o.id')
+BR=$(curl -s -X POST "$API/records" -H "$A" -H "$J" -d "{\"vehicleId\":\"$BVID\",\"values\":[{\"fieldId\":\"$BFLD\",\"value\":{\"done\":true}}]}")
+BRID=$(echo "$BR" | jq_ 'o.id')
+check "record item carries EN label" "$(echo "$BR" | jq_ "o.sections[0].items[0].labelEn")" "Smoke bilingual field"
+check "record item carries IT label" "$(echo "$BR" | jq_ "o.sections[0].items[0].labelIt")" "Campo bilingue prova"
+BREP=$(curl -s "$API/records/$BRID/report" -H "$A")
+check "report section carries both languages" "$(echo "$BREP" | jq_ "o.sections[0].titleEn+'|'+o.sections[0].titleIt")" "Smoke bilingual section|Sezione bilingue prova"
+curl -s -o /dev/null -X DELETE "$API/records/$BRID" -H "$A"
+curl -s -o /dev/null -X DELETE "$API/form/fields/$BFLD" -H "$A"
+curl -s -o /dev/null -X DELETE "$API/form/sections/$BSEC" -H "$A"
+curl -s -o /dev/null -X DELETE "$API/vehicles/$BVID" -H "$A"
+check "bilingual section actually removed" "$(curl -s "$API/form/definition?includeInactive=1" -H "$A" | jq_ "o.some(s=>s.id==='$BSEC')")" "false"
 
 echo; echo "PASS=$pass FAIL=$fail"; [ "$fail" -eq 0 ]

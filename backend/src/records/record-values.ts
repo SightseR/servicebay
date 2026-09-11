@@ -3,23 +3,25 @@ import { FieldType } from '@prisma/client';
 /** Minimal shape of a field the validator needs (subset of FormField + options). */
 export interface FieldDef {
   id: string;
-  label: string;
+  labelEn: string;
+  labelIt: string | null;
   type: FieldType;
   required: boolean;
   active: boolean;
   config: Record<string, unknown>;
-  options: { id: string; label: string; active: boolean }[];
+  options: { id: string; labelEn: string; labelIt: string | null; active: boolean }[];
 }
 
 export interface ValueInput { fieldId: string; value: unknown }
 
 export type ChecklistValue = { done: boolean; urgent: boolean; later: boolean; note?: string };
-export type ChoiceValue = { optionId: string; label: string };
+export type ChoiceValue = { optionId: string; labelEn: string; labelIt: string | null };
 export type MultiChoiceValue = { options: ChoiceValue[] };
 export type TextValue = { text: string };
 export type NumberValue = { number: number };
 export type StoredValue = ChecklistValue | ChoiceValue | MultiChoiceValue | TextValue | NumberValue;
 
+/** `label` is always English — an internal identifier for the error, not shown to end users in either language directly (the frontend maps fieldId back to its own bilingual field definition). */
 export interface ValueError { fieldId: string; label: string; message: string }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -31,7 +33,7 @@ const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
  * Throws a ValueError-shaped object on invalid input.
  */
 export function normaliseValue(field: FieldDef, raw: unknown): StoredValue | null {
-  const err = (message: string): never => { throw { fieldId: field.id, label: field.label, message } as ValueError; };
+  const err = (message: string): never => { throw { fieldId: field.id, label: field.labelEn, message } as ValueError; };
   const cfg = field.config;
 
   switch (field.type) {
@@ -49,8 +51,8 @@ export function normaliseValue(field: FieldDef, raw: unknown): StoredValue | nul
       if (!optionId) return null;
       const opt = field.options.find((o) => o.id === optionId);
       if (!opt) return err('unknown option');
-      if (!opt.active) return err(`option "${opt.label}" is no longer available`);
-      return { optionId: opt.id, label: opt.label };
+      if (!opt.active) return err(`option "${opt.labelEn}" is no longer available`);
+      return { optionId: opt.id, labelEn: opt.labelEn, labelIt: opt.labelIt };
     }
     case FieldType.MULTI_CHOICE: {
       const ids: unknown = isObj(raw) ? raw.options : raw;
@@ -60,8 +62,8 @@ export function normaliseValue(field: FieldDef, raw: unknown): StoredValue | nul
         const id = isObj(item) ? str(item.optionId) : str(item);
         const opt = field.options.find((o) => o.id === id);
         if (!opt) return err('unknown option');
-        if (!opt.active) return err(`option "${opt.label}" is no longer available`);
-        if (!picked.some((p) => p.optionId === opt.id)) picked.push({ optionId: opt.id, label: opt.label });
+        if (!opt.active) return err(`option "${opt.labelEn}" is no longer available`);
+        if (!picked.some((p) => p.optionId === opt.id)) picked.push({ optionId: opt.id, labelEn: opt.labelEn, labelIt: opt.labelIt });
       }
       return picked.length ? { options: picked } : null;
     }
@@ -85,7 +87,7 @@ export function normaliseValue(field: FieldDef, raw: unknown): StoredValue | nul
   }
 }
 
-export interface NormalisedValue { fieldId: string; value: StoredValue; labelSnapshot: string }
+export interface NormalisedValue { fieldId: string; value: StoredValue; labelSnapshotEn: string; labelSnapshotIt: string | null }
 
 /**
  * Validates a whole submission. `previouslyStoredFieldIds` lets an edit keep values for
@@ -104,15 +106,15 @@ export function normaliseValues(
   for (const input of inputs) {
     const field = byId.get(input.fieldId);
     if (!field) { errors.push({ fieldId: input.fieldId, label: '?', message: 'unknown field' }); continue; }
-    if (seen.has(field.id)) { errors.push({ fieldId: field.id, label: field.label, message: 'duplicate value for field' }); continue; }
+    if (seen.has(field.id)) { errors.push({ fieldId: field.id, label: field.labelEn, message: 'duplicate value for field' }); continue; }
     seen.add(field.id);
     if (!field.active && !previouslyStoredFieldIds.has(field.id)) {
-      errors.push({ fieldId: field.id, label: field.label, message: 'field is no longer active' });
+      errors.push({ fieldId: field.id, label: field.labelEn, message: 'field is no longer active' });
       continue;
     }
     try {
       const v = normaliseValue(field, input.value);
-      if (v !== null) values.push({ fieldId: field.id, value: v, labelSnapshot: field.label });
+      if (v !== null) values.push({ fieldId: field.id, value: v, labelSnapshotEn: field.labelEn, labelSnapshotIt: field.labelIt });
     } catch (e) {
       errors.push(e as ValueError);
     }
@@ -120,7 +122,7 @@ export function normaliseValues(
 
   for (const f of fields) {
     if (f.required && f.active && !values.some((v) => v.fieldId === f.id) && !errors.some((e) => e.fieldId === f.id)) {
-      errors.push({ fieldId: f.id, label: f.label, message: 'required' });
+      errors.push({ fieldId: f.id, label: f.labelEn, message: 'required' });
     }
   }
   return { values, errors };

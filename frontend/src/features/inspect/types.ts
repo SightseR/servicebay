@@ -1,12 +1,12 @@
 export type FieldType = 'CHECKLIST' | 'SINGLE_CHOICE' | 'DROPDOWN' | 'MULTI_CHOICE' | 'TEXT' | 'TEXTAREA' | 'NUMBER';
 
-export interface FieldOption { id: string; label: string; sortOrder: number; active: boolean }
+export interface FieldOption { id: string; labelEn: string; labelIt: string | null; sortOrder: number; active: boolean }
 export interface FormFieldDef {
-  id: string; label: string; type: FieldType; required: boolean; sortOrder: number; showInReport: boolean;
+  id: string; labelEn: string; labelIt: string | null; type: FieldType; required: boolean; sortOrder: number; showInReport: boolean;
   config: { unit?: string; min?: number; max?: number; maxLength?: number; allowNote?: boolean; notePlaceholder?: string; legacyKey?: string };
   options: FieldOption[];
 }
-export interface FormSectionDef { id: string; title: string; sortOrder: number; fields: FormFieldDef[] }
+export interface FormSectionDef { id: string; titleEn: string; titleIt: string | null; sortOrder: number; fields: FormFieldDef[] }
 
 /** In-progress answer for one field, shaped per type — same contract the backend's record-values.ts expects. */
 export type ChecklistDraft = { done: boolean; urgent: boolean; later: boolean; note: string };

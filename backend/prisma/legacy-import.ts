@@ -31,7 +31,7 @@ async function main() {
 
   // field lookup by legacyKey
   const fields = await prisma.formField.findMany({
-    select: { id: true, label: true, type: true, required: true, active: true, config: true, options: { select: { id: true, label: true, active: true } } },
+    select: { id: true, labelEn: true, labelIt: true, type: true, required: true, active: true, config: true, options: { select: { id: true, labelEn: true, labelIt: true, active: true } } },
   });
   const byKey = new Map<string, FieldDef>();
   for (const f of fields) {
@@ -62,7 +62,7 @@ async function main() {
         const field = byKey.get(legacyKey)!;
         const norm = normaliseValue(field, value); // same rules as the API
         if (norm === null) throw new Error(`Record ${record.legacyId}: value for ${legacyKey} normalised to empty`);
-        return { fieldId: field.id, value: norm as unknown as Prisma.InputJsonObject, labelSnapshot: field.label };
+        return { fieldId: field.id, value: norm as unknown as Prisma.InputJsonObject, labelSnapshotEn: field.labelEn, labelSnapshotIt: field.labelIt };
       });
       expectedValues += values.length;
 

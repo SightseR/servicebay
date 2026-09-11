@@ -17,12 +17,12 @@ export function ValueDisplay({ type, value, unit }: { type: string; value: unkno
       );
     }
     case 'SINGLE_CHOICE': case 'DROPDOWN': {
-      const v = value as { label?: string } | null;
-      return <span>{v?.label ?? '—'}</span>;
+      const v = value as { labelEn?: string } | null;
+      return <span>{v?.labelEn ?? '—'}</span>;
     }
     case 'MULTI_CHOICE': {
-      const v = value as { options?: { label: string }[] } | null;
-      return <span>{v?.options?.map((o) => o.label).join(', ') || '—'}</span>;
+      const v = value as { options?: { labelEn: string }[] } | null;
+      return <span>{v?.options?.map((o) => o.labelEn).join(', ') || '—'}</span>;
     }
     case 'TEXT': case 'TEXTAREA': {
       const v = value as { text?: string } | null;

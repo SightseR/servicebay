@@ -135,7 +135,7 @@ export function RecordDetailPage() {
             <div className="flex items-center gap-2 text-muted py-6"><Spinner className="h-4 w-4" /> Loading form…</div>
           ) : fullDefinition.map((section) => (
             <div key={section.id} className="panel p-4">
-              <h2 className="text-lg mb-1">{section.title}</h2>
+              <h2 className="text-lg mb-1">{section.titleEn}</h2>
               <div className="divide-y divide-steel">
                 {section.fields.map((field) => (
                   <div key={field.id}>
@@ -157,11 +157,11 @@ export function RecordDetailPage() {
           {record.sections.length === 0 && <p className="text-muted">No checklist items were recorded for this visit.</p>}
           {record.sections.map((section) => (
             <div key={section.id} className="panel p-4">
-              <h2 className="text-lg mb-1">{section.title}</h2>
+              <h2 className="text-lg mb-1">{section.titleEn}</h2>
               <div className="divide-y divide-steel">
                 {section.items.map((item) => (
                   <div key={item.fieldId} className="flex items-center justify-between gap-4 py-2">
-                    <span className="text-sm text-ink">{item.label}</span>
+                    <span className="text-sm text-ink">{item.labelEn}</span>
                     <ValueDisplay type={item.type} value={item.value} />
                   </div>
                 ))}

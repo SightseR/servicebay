@@ -33,7 +33,7 @@ export class FormService {
 
   async createSection(dto: CreateSectionDto) {
     const sortOrder = await this.nextSort(this.prisma.formSection, {});
-    return this.prisma.formSection.create({ data: { title: dto.title, sortOrder } });
+    return this.prisma.formSection.create({ data: { titleEn: dto.titleEn, titleIt: dto.titleIt, sortOrder } });
   }
 
   async updateSection(id: string, dto: UpdateSectionDto) {
@@ -65,14 +65,15 @@ export class FormService {
     return this.prisma.formField.create({
       data: {
         sectionId,
-        label: dto.label,
+        labelEn: dto.labelEn,
+        labelIt: dto.labelIt,
         type: dto.type,
         required: dto.required ?? false,
         showInReport: dto.showInReport ?? true,
         sortOrder,
         config: config as Prisma.InputJsonObject,
         options: dto.options?.length
-          ? { create: dto.options.map((o, i) => ({ label: o.label, sortOrder: (i + 1) * STEP })) }
+          ? { create: dto.options.map((o, i) => ({ labelEn: o.labelEn, labelIt: o.labelIt, sortOrder: (i + 1) * STEP })) }
           : undefined,
       },
       include: { options: { orderBy: { sortOrder: 'asc' } } },
@@ -108,7 +109,8 @@ export class FormService {
     return this.prisma.formField.update({
       where: { id },
       data: {
-        label: dto.label,
+        labelEn: dto.labelEn,
+        labelIt: dto.labelIt,
         type: dto.type,
         required: dto.required,
         showInReport: dto.showInReport,
@@ -140,7 +142,7 @@ export class FormService {
     if (!field) throw new NotFoundException('Field not found');
     if (!hasOptions(field.type)) throw new BadRequestException(`${field.type} does not take options`);
     const sortOrder = await this.nextSort(this.prisma.formFieldOption, { fieldId });
-    return this.prisma.formFieldOption.create({ data: { fieldId, label: dto.label, sortOrder } });
+    return this.prisma.formFieldOption.create({ data: { fieldId, labelEn: dto.labelEn, labelIt: dto.labelIt, sortOrder } });
   }
 
   async updateOption(id: string, dto: UpdateOptionDto) {

@@ -12,12 +12,12 @@ const jsonRes = (status: number, body: unknown) =>
 
 const definition = [
   {
-    id: 'sec1', title: 'Engine services', sortOrder: 10,
-    fields: [{ id: 'f-oil', label: 'Oil change', type: 'CHECKLIST', required: false, sortOrder: 10, showInReport: true, config: {}, options: [] }],
+    id: 'sec1', titleEn: 'Engine services', titleIt: null, sortOrder: 10,
+    fields: [{ id: 'f-oil', labelEn: 'Oil change', labelIt: null, type: 'CHECKLIST', required: false, sortOrder: 10, showInReport: true, config: {}, options: [] }],
   },
   {
-    id: 'sec2', title: 'Brake wear', sortOrder: 20,
-    fields: [{ id: 'f-fl', label: 'Front left', type: 'NUMBER', required: false, sortOrder: 10, showInReport: true, config: { unit: '%', min: 0, max: 100 }, options: [] }],
+    id: 'sec2', titleEn: 'Brake wear', titleIt: null, sortOrder: 20,
+    fields: [{ id: 'f-fl', labelEn: 'Front left', labelIt: null, type: 'NUMBER', required: false, sortOrder: 10, showInReport: true, config: { unit: '%', min: 0, max: 100 }, options: [] }],
   },
 ];
 

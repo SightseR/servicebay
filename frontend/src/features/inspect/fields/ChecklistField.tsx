@@ -9,7 +9,7 @@ const chip = (active: boolean, tone: 'moss' | 'rust' | 'amber') => {
 export function ChecklistField({ field, value, onChange }: { field: FormFieldDef; value: ChecklistDraft; onChange: (v: ChecklistDraft) => void }) {
   return (
     <div className="flex items-center justify-between gap-3 py-2">
-      <span className="text-ink text-sm">{field.label}</span>
+      <span className="text-ink text-sm">{field.labelEn}</span>
       <div className="flex items-center gap-1.5 shrink-0">
         <button type="button" className={chip(value.done, 'moss')} onClick={() => onChange({ ...value, done: !value.done })}>Done</button>
         <button type="button" className={chip(value.urgent, 'rust')} onClick={() => onChange({ ...value, urgent: !value.urgent })}>Urgent</button>

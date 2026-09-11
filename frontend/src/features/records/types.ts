@@ -23,9 +23,9 @@ export interface VehicleDetail extends VehicleSummary {
 }
 
 export interface RecordItem {
-  fieldId: string; label: string; type: string; sortOrder: number; showInReport: boolean; value: unknown;
+  fieldId: string; labelEn: string; labelIt: string | null; type: string; sortOrder: number; showInReport: boolean; value: unknown;
 }
-export interface RecordSection { id: string; title: string; sortOrder: number; items: RecordItem[] }
+export interface RecordSection { id: string; titleEn: string; titleIt: string | null; sortOrder: number; items: RecordItem[] }
 export interface RecordDetail {
   id: string; kilometers: number | null; gearbox: Gearbox | null; motivePower: MotivePower | null; driveMode: DriveMode | null;
   servicedAt: string; legacyId: string | null; createdAt: string; updatedAt: string;
@@ -36,8 +36,8 @@ export interface RecordDetail {
   values: { fieldId: string; value: unknown }[];
 }
 
-export interface ReportItem { fieldId: string; label: string; type: string; value: unknown }
-export interface ReportSection { id: string; title: string; items: ReportItem[] }
+export interface ReportItem { fieldId: string; labelEn: string; labelIt: string | null; type: string; value: unknown }
+export interface ReportSection { id: string; titleEn: string; titleIt: string | null; items: ReportItem[] }
 export interface CompanyProfile {
   companyName: string | null; tagline: string | null; addressLine1: string | null; addressLine2: string | null;
   postalCode: string | null; city: string | null; country: string | null; phone: string | null; email: string | null;

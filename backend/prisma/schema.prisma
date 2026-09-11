@@ -107,7 +107,8 @@ model Vehicle {
 
 model FormSection {
   id        String   @id @default(uuid())
-  title     String
+  titleEn   String
+  titleIt   String?
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -121,7 +122,8 @@ model FormSection {
 model FormField {
   id           String    @id @default(uuid())
   sectionId    String
-  label        String
+  labelEn      String
+  labelIt      String?
   type         FieldType
   required     Boolean   @default(false)
   sortOrder    Int       @default(0)
@@ -142,7 +144,8 @@ model FormField {
 model FormFieldOption {
   id        String  @id @default(uuid())
   fieldId   String
-  label     String
+  labelEn   String
+  labelIt   String?
   sortOrder Int     @default(0)
   active    Boolean @default(true)
 
@@ -188,9 +191,10 @@ model RecordValue {
   id            String @id @default(uuid())
   recordId      String
   fieldId       String
-  value         Json
-  /// field label at time of saving, so reports survive later renames
-  labelSnapshot String
+  value             Json
+  /// field label at time of saving (both languages), so reports survive later renames
+  labelSnapshotEn   String
+  labelSnapshotIt   String?
 
   record ServiceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
   field  FormField     @relation(fields: [fieldId], references: [id], onDelete: Restrict)

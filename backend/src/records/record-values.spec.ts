@@ -2,7 +2,7 @@ import { FieldType } from '@prisma/client';
 import { FieldDef, normaliseValue, normaliseValues } from './record-values';
 
 const f = (over: Partial<FieldDef>): FieldDef => ({
-  id: 'f1', label: 'Field', type: FieldType.TEXT, required: false, active: true, config: {}, options: [], ...over,
+  id: 'f1', labelEn: 'Field', labelIt: null, type: FieldType.TEXT, required: false, active: true, config: {}, options: [], ...over,
 });
 
 describe('normaliseValue', () => {
@@ -15,18 +15,18 @@ describe('normaliseValue', () => {
     expect(normaliseValue(n, { note: ' fault code ' })).toEqual({ done: false, urgent: false, later: false, note: 'fault code' });
   });
 
-  it('DROPDOWN: resolves option label, rejects unknown/inactive', () => {
-    const d = f({ type: FieldType.DROPDOWN, options: [{ id: 'o1', label: 'Summer', active: true }, { id: 'o2', label: 'Old', active: false }] });
-    expect(normaliseValue(d, 'o1')).toEqual({ optionId: 'o1', label: 'Summer' });
-    expect(normaliseValue(d, { optionId: 'o1' })).toEqual({ optionId: 'o1', label: 'Summer' });
+  it('DROPDOWN: resolves option label (both languages), rejects unknown/inactive', () => {
+    const d = f({ type: FieldType.DROPDOWN, options: [{ id: 'o1', labelEn: 'Summer', labelIt: 'Estate', active: true }, { id: 'o2', labelEn: 'Old', labelIt: null, active: false }] });
+    expect(normaliseValue(d, 'o1')).toEqual({ optionId: 'o1', labelEn: 'Summer', labelIt: 'Estate' });
+    expect(normaliseValue(d, { optionId: 'o1' })).toEqual({ optionId: 'o1', labelEn: 'Summer', labelIt: 'Estate' });
     expect(normaliseValue(d, '')).toBeNull();
     expect(() => normaliseValue(d, 'nope')).toThrow();
     expect(() => normaliseValue(d, 'o2')).toThrow();
   });
 
   it('MULTI_CHOICE: dedupes, preserves order, empty → null', () => {
-    const m = f({ type: FieldType.MULTI_CHOICE, options: [{ id: 'a', label: 'A', active: true }, { id: 'b', label: 'B', active: true }] });
-    expect(normaliseValue(m, ['b', 'a', 'b'])).toEqual({ options: [{ optionId: 'b', label: 'B' }, { optionId: 'a', label: 'A' }] });
+    const m = f({ type: FieldType.MULTI_CHOICE, options: [{ id: 'a', labelEn: 'A', labelIt: null, active: true }, { id: 'b', labelEn: 'B', labelIt: null, active: true }] });
+    expect(normaliseValue(m, ['b', 'a', 'b'])).toEqual({ options: [{ optionId: 'b', labelEn: 'B', labelIt: null }, { optionId: 'a', labelEn: 'A', labelIt: null }] });
     expect(normaliseValue(m, [])).toBeNull();
     expect(() => normaliseValue(m, 'a')).toThrow();
   });
@@ -49,9 +49,9 @@ describe('normaliseValue', () => {
 
 describe('normaliseValues', () => {
   const fields = [
-    f({ id: 'req', label: 'Reg check', type: FieldType.CHECKLIST, required: true }),
-    f({ id: 'txt', label: 'Note' }),
-    f({ id: 'old', label: 'Retired', active: false }),
+    f({ id: 'req', labelEn: 'Reg check', type: FieldType.CHECKLIST, required: true }),
+    f({ id: 'txt', labelEn: 'Note' }),
+    f({ id: 'old', labelEn: 'Retired', active: false }),
   ];
 
   it('drops empty values and reports missing required', () => {
@@ -60,10 +60,11 @@ describe('normaliseValues', () => {
     expect(r.errors).toEqual([{ fieldId: 'req', label: 'Reg check', message: 'required' }]);
   });
 
-  it('stores label snapshot', () => {
-    const r = normaliseValues(fields, [{ fieldId: 'req', value: { urgent: true } }, { fieldId: 'txt', value: 'x' }]);
+  it('stores bilingual label snapshot', () => {
+    const withIt = [f({ id: 'req', labelEn: 'Reg check', labelIt: 'Controllo', type: FieldType.CHECKLIST, required: true }), f({ id: 'txt', labelEn: 'Note' })];
+    const r = normaliseValues(withIt, [{ fieldId: 'req', value: { urgent: true } }, { fieldId: 'txt', value: 'x' }]);
     expect(r.errors).toEqual([]);
-    expect(r.values.map((v) => v.labelSnapshot)).toEqual(['Reg check', 'Note']);
+    expect(r.values.map((v) => [v.labelSnapshotEn, v.labelSnapshotIt])).toEqual([['Reg check', 'Controllo'], ['Note', null]]);
   });
 
   it('rejects unknown, duplicate and inactive fields on create', () => {

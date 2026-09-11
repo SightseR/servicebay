@@ -21,7 +21,7 @@ const baseRecord = {
   servicedAt: '2026-06-01T10:00:00Z', legacyId: null, createdAt: '2026-06-01T10:00:00Z', updatedAt: '2026-06-01T10:00:00Z',
   vehicle: { id: 'v1', regNumber: 'DW 769DN', brand: 'Toyota', model: 'Corolla', year: 2018, gearbox: 'AUTO', motivePower: 'PETROL', driveMode: 'FRONT', ownerName: null, ownerPhone: null, ownerEmail: null },
   createdBy: { id: 'u1', displayName: 'Admin One' }, updatedBy: { id: 'u1', displayName: 'Admin One' },
-  sections: [{ id: 'sec1', title: 'Engine services', sortOrder: 10, items: [{ fieldId: 'f-oil', label: 'Oil change', type: 'CHECKLIST', sortOrder: 10, showInReport: true, value: { done: true, urgent: false, later: false } }] }],
+  sections: [{ id: 'sec1', titleEn: 'Engine services', titleIt: null, sortOrder: 10, items: [{ fieldId: 'f-oil', labelEn: 'Oil change', labelIt: null, type: 'CHECKLIST', sortOrder: 10, showInReport: true, value: { done: true, urgent: false, later: false } }] }],
   values: [{ fieldId: 'f-oil', value: { done: true, urgent: false, later: false } }],
 };
 
@@ -75,7 +75,7 @@ describe('RecordDetailPage', () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonRes(200, baseRecord))
       .mockResolvedValueOnce(jsonRes(200, [
-        { id: 'sec1', title: 'Engine services', sortOrder: 10, fields: [{ id: 'f-oil', label: 'Oil change', type: 'CHECKLIST', required: false, sortOrder: 10, showInReport: true, config: {}, options: [] }] },
+        { id: 'sec1', titleEn: 'Engine services', titleIt: null, sortOrder: 10, fields: [{ id: 'f-oil', labelEn: 'Oil change', labelIt: null, type: 'CHECKLIST', required: false, sortOrder: 10, showInReport: true, config: {}, options: [] }] },
       ]));
     vi.stubGlobal('fetch', fetchMock);
     const store = configureStore({
@@ -100,7 +100,7 @@ describe('RecordDetailPage', () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonRes(200, baseRecord))
       .mockResolvedValueOnce(jsonRes(200, [
-        { id: 'sec1', title: 'Engine services', sortOrder: 10, fields: [{ id: 'f-oil', label: 'Oil change', type: 'CHECKLIST', required: false, sortOrder: 10, showInReport: true, config: {}, options: [] }] },
+        { id: 'sec1', titleEn: 'Engine services', titleIt: null, sortOrder: 10, fields: [{ id: 'f-oil', labelEn: 'Oil change', labelIt: null, type: 'CHECKLIST', required: false, sortOrder: 10, showInReport: true, config: {}, options: [] }] },
       ]))
       .mockResolvedValueOnce(jsonRes(200, { ...baseRecord, kilometers: 130000 }));
     vi.stubGlobal('fetch', fetchMock);

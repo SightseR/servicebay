@@ -16,8 +16,8 @@ const recordDetail = {
   createdBy: userRef, updatedBy: userRef,
   values: {
     select: {
-      fieldId: true, value: true, labelSnapshot: true,
-      field: { select: { type: true, sectionId: true, sortOrder: true, showInReport: true, section: { select: { id: true, title: true, sortOrder: true } } } },
+      fieldId: true, value: true, labelSnapshotEn: true, labelSnapshotIt: true,
+      field: { select: { type: true, sectionId: true, sortOrder: true, showInReport: true, section: { select: { id: true, titleEn: true, titleIt: true, sortOrder: true } } } },
     },
   },
 } as const;
@@ -87,7 +87,7 @@ export class RecordsService {
         servicedAt: dto.servicedAt ? new Date(dto.servicedAt) : new Date(),
         createdById: actor.id,
         updatedById: actor.id,
-        values: { create: values.map((x) => ({ fieldId: x.fieldId, value: x.value as Prisma.InputJsonObject, labelSnapshot: x.labelSnapshot })) },
+        values: { create: values.map((x) => ({ fieldId: x.fieldId, value: x.value as Prisma.InputJsonObject, labelSnapshotEn: x.labelSnapshotEn, labelSnapshotIt: x.labelSnapshotIt })) },
       },
       select: recordDetail,
     });
@@ -111,7 +111,7 @@ export class RecordsService {
       if (errors.length) throw new BadRequestException({ message: 'Invalid values', errors });
       valueOps = {
         deleteMany: {},
-        create: values.map((x) => ({ fieldId: x.fieldId, value: x.value as Prisma.InputJsonObject, labelSnapshot: x.labelSnapshot })),
+        create: values.map((x) => ({ fieldId: x.fieldId, value: x.value as Prisma.InputJsonObject, labelSnapshotEn: x.labelSnapshotEn, labelSnapshotIt: x.labelSnapshotIt })),
       };
     }
 
@@ -169,19 +169,19 @@ export class RecordsService {
   private loadFields(includeInactive = false): Promise<FieldDef[]> {
     return this.prisma.formField.findMany({
       where: includeInactive ? {} : { active: true, section: { active: true } },
-      select: { id: true, label: true, type: true, required: true, active: true, config: true, options: { select: { id: true, label: true, active: true } } },
+      select: { id: true, labelEn: true, labelIt: true, type: true, required: true, active: true, config: true, options: { select: { id: true, labelEn: true, labelIt: true, active: true } } },
     }) as unknown as Promise<FieldDef[]>;
   }
 
-  /** Groups flat values into ordered sections → items, using label snapshots. */
-  private shape<T extends { values: { fieldId: string; value: unknown; labelSnapshot: string; field: { type: string; sectionId: string; sortOrder: number; showInReport: boolean; section: { id: string; title: string; sortOrder: number } } }[] }>(r: T) {
+  /** Groups flat values into ordered sections → items, using bilingual label snapshots (D10). */
+  private shape<T extends { values: { fieldId: string; value: unknown; labelSnapshotEn: string; labelSnapshotIt: string | null; field: { type: string; sectionId: string; sortOrder: number; showInReport: boolean; section: { id: string; titleEn: string; titleIt: string | null; sortOrder: number } } }[] }>(r: T) {
     const { values, ...rest } = r;
-    const sectionMap = new Map<string, { id: string; title: string; sortOrder: number; items: { fieldId: string; label: string; type: string; sortOrder: number; showInReport: boolean; value: StoredValue }[] }>();
+    const sectionMap = new Map<string, { id: string; titleEn: string; titleIt: string | null; sortOrder: number; items: { fieldId: string; labelEn: string; labelIt: string | null; type: string; sortOrder: number; showInReport: boolean; value: StoredValue }[] }>();
     for (const v of values) {
       const s = v.field.section;
-      if (!sectionMap.has(s.id)) sectionMap.set(s.id, { id: s.id, title: s.title, sortOrder: s.sortOrder, items: [] });
+      if (!sectionMap.has(s.id)) sectionMap.set(s.id, { id: s.id, titleEn: s.titleEn, titleIt: s.titleIt, sortOrder: s.sortOrder, items: [] });
       sectionMap.get(s.id)!.items.push({
-        fieldId: v.fieldId, label: v.labelSnapshot, type: v.field.type, sortOrder: v.field.sortOrder,
+        fieldId: v.fieldId, labelEn: v.labelSnapshotEn, labelIt: v.labelSnapshotIt, type: v.field.type, sortOrder: v.field.sortOrder,
         showInReport: v.field.showInReport, value: v.value as StoredValue,
       });
     }
