@@ -6,6 +6,7 @@ import { RegisterPage } from './features/auth/pages/RegisterPage';
 import { fetchMe } from './features/auth/authSlice';
 import { AppShell } from './features/shell/AppShell';
 import { ProtectedRoute } from './features/shell/ProtectedRoute';
+import { UsersPage } from './features/admin/pages/UsersPage';
 import { RecordsPlaceholder } from './features/shell/RecordsPlaceholder';
 
 export default function App() {
@@ -36,7 +37,7 @@ export default function App() {
           path="/admin"
           element={
             <ProtectedRoute requireManager>
-              <div className="p-8 text-muted">Admin — Chunk 10.</div>
+              <UsersPage />
             </ProtectedRoute>
           }
         />
