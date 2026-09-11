@@ -1,20 +1,22 @@
 import { useEffect } from 'react';
 import { Check, Loader2, ShieldOff, Undo2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { Alert } from '../../../components/Alert';
 import { Badge } from '../../../components/Badge';
 import { Spinner } from '../../../components/Spinner';
+import { formatDate } from '../../../lib/i18n/formatDate';
 import { approveUser, fetchUsers, updateUser } from '../usersSlice';
 import type { ManagedUser } from '../usersSlice';
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-
 function RoleBadge({ role }: { role: ManagedUser['role'] }) {
-  return <Badge tone={role === 'MANAGER' ? 'amber' : 'muted'}>{role === 'MANAGER' ? 'Manager' : 'Admin'}</Badge>;
+  const { t } = useTranslation();
+  return <Badge tone={role === 'MANAGER' ? 'amber' : 'muted'}>{role === 'MANAGER' ? t('nav.manager') : t('nav.admin_role')}</Badge>;
 }
 
 export function UsersPage() {
   const dispatch = useAppDispatch();
+  const { t, i18n } = useTranslation();
   const currentUser = useAppSelector((s) => s.auth.user);
   const { items, loading, error, rowBusy, rowError } = useAppSelector((s) => s.adminUsers);
 
@@ -25,23 +27,23 @@ export function UsersPage() {
 
   return (
     <div className="p-8 max-w-4xl">
-      <h1 className="text-2xl mb-1">Users</h1>
-      <p className="text-muted mb-6">Approve new accounts and manage roles.</p>
+      <h1 className="text-2xl mb-1">{t('admin.usersTitle')}</h1>
+      <p className="text-muted mb-6">{t('admin.usersSubtitle')}</p>
 
       {error && <div className="mb-4"><Alert>{error}</Alert></div>}
       {loading && items.length === 0 && (
-        <div className="flex items-center gap-2 text-muted py-8"><Spinner className="h-4 w-4" /> Loading users…</div>
+        <div className="flex items-center gap-2 text-muted py-8"><Spinner className="h-4 w-4" /> {t('common.loading')}</div>
       )}
 
       {pending.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-sm text-muted mb-2">Awaiting approval</h2>
+          <h2 className="text-sm text-muted mb-2">{t('admin.awaitingApproval')}</h2>
           <div className="panel divide-y divide-steel">
             {pending.map((u) => (
               <div key={u.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="min-w-0">
                   <p className="text-ink truncate">{u.displayName}</p>
-                  <p className="text-sm text-muted truncate">{u.email} · requested {formatDate(u.createdAt)}</p>
+                  <p className="text-sm text-muted truncate">{u.email} · {t('admin.requestedOn', { date: formatDate(i18n.language, u.createdAt) })}</p>
                   {rowError[u.id] && <p className="text-sm text-rust mt-1">{rowError[u.id]}</p>}
                 </div>
                 <button
@@ -50,7 +52,7 @@ export function UsersPage() {
                   onClick={() => dispatch(approveUser(u.id))}
                 >
                   {rowBusy[u.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  Approve
+                  {t('admin.approve')}
                 </button>
               </div>
             ))}
@@ -59,7 +61,7 @@ export function UsersPage() {
       )}
 
       <section>
-        <h2 className="text-sm text-muted mb-2">Team</h2>
+        <h2 className="text-sm text-muted mb-2">{t('admin.team')}</h2>
         <div className="panel divide-y divide-steel">
           {others.map((u) => {
             const isSelf = u.id === currentUser?.id;
@@ -70,8 +72,8 @@ export function UsersPage() {
                   <div className="flex items-center gap-2">
                     <p className="text-ink truncate">{u.displayName}</p>
                     <RoleBadge role={u.role} />
-                    {u.status === 'DISABLED' && <Badge tone="rust">Disabled</Badge>}
-                    {isSelf && <span className="text-xs text-muted">(you)</span>}
+                    {u.status === 'DISABLED' && <Badge tone="rust">{t('admin.disabled')}</Badge>}
+                    {isSelf && <span className="text-xs text-muted">{t('admin.you')}</span>}
                   </div>
                   <p className="text-sm text-muted truncate">{u.email}</p>
                   {rowError[u.id] && <p className="text-sm text-rust mt-1">{rowError[u.id]}</p>}
@@ -84,8 +86,8 @@ export function UsersPage() {
                       disabled={busy}
                       onChange={(e) => dispatch(updateUser({ id: u.id, role: e.target.value as ManagedUser['role'] }))}
                     >
-                      <option value="ADMIN">Admin</option>
-                      <option value="MANAGER">Manager</option>
+                      <option value="ADMIN">{t('nav.admin_role')}</option>
+                      <option value="MANAGER">{t('nav.manager')}</option>
                     </select>
                   )}
                   {!isSelf && (
@@ -95,7 +97,7 @@ export function UsersPage() {
                       onClick={() => dispatch(updateUser({ id: u.id, status: u.status === 'DISABLED' ? 'ACTIVE' : 'DISABLED' }))}
                     >
                       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : u.status === 'DISABLED' ? <Undo2 className="h-4 w-4" /> : <ShieldOff className="h-4 w-4" />}
-                      {u.status === 'DISABLED' ? 'Enable' : 'Disable'}
+                      {u.status === 'DISABLED' ? t('admin.enable') : t('admin.disable')}
                     </button>
                   )}
                 </div>

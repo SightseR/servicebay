@@ -1,21 +1,22 @@
 import { Search, Wrench } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { Alert } from '../../../components/Alert';
 import { Pagination } from '../../../components/Pagination';
 import { Plate } from '../../../components/Plate';
 import { Spinner } from '../../../components/Spinner';
+import { formatDate } from '../../../lib/i18n/formatDate';
 import { useDebouncedValue } from '../../../lib/hooks/useDebouncedValue';
 import { VehicleHistoryDrawer } from '../components/VehicleHistoryDrawer';
 import { fetchRecords } from '../recordsSlice';
 
 const PAGE_SIZE = 20;
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-
 export function RecordsPage() {
   const dispatch = useAppDispatch();
+  const { t, i18n } = useTranslation();
   const { data, loading, error } = useAppSelector((s) => s.records);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -31,11 +32,11 @@ export function RecordsPage() {
     <div className="p-8">
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl mb-1">Records</h1>
-          <p className="text-muted">Every inspection, newest first.</p>
+          <h1 className="text-2xl mb-1">{t('records.title')}</h1>
+          <p className="text-muted">{t('records.subtitle')}</p>
         </div>
         <Link to="/inspect" className="btn-primary shrink-0">
-          <Wrench className="h-4 w-4" /> New inspection
+          <Wrench className="h-4 w-4" /> {t('nav.newInspection')}
         </Link>
       </div>
 
@@ -43,7 +44,7 @@ export function RecordsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
         <input
           className="field-input pl-9"
-          placeholder="Search by registration, owner, phone, brand…"
+          placeholder={t('records.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -56,10 +57,10 @@ export function RecordsPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-steel text-muted">
               <tr>
-                <th className="px-4 py-3 font-normal">Vehicle</th>
-                <th className="px-4 py-3 font-normal">Owner</th>
-                <th className="px-4 py-3 font-normal">Serviced</th>
-                <th className="px-4 py-3 font-normal">Mileage</th>
+                <th className="px-4 py-3 font-normal">{t('records.colVehicle')}</th>
+                <th className="px-4 py-3 font-normal">{t('records.colOwner')}</th>
+                <th className="px-4 py-3 font-normal">{t('records.colServiced')}</th>
+                <th className="px-4 py-3 font-normal">{t('records.colMileage')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-steel">
@@ -75,19 +76,19 @@ export function RecordsPage() {
                       <span className="text-muted">{r.vehicle.brand} {r.vehicle.model}{r.vehicle.year ? ` · ${r.vehicle.year}` : ''}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted">{r.vehicle.ownerName ?? '—'}</td>
-                  <td className="px-4 py-3">{formatDate(r.servicedAt)}</td>
-                  <td className="px-4 py-3 text-muted">{r.kilometers != null ? `${r.kilometers.toLocaleString()} km` : '—'}</td>
+                  <td className="px-4 py-3 text-muted">{r.vehicle.ownerName ?? t('common.none')}</td>
+                  <td className="px-4 py-3">{formatDate(i18n.language, r.servicedAt)}</td>
+                  <td className="px-4 py-3 text-muted">{r.kilometers != null ? `${r.kilometers.toLocaleString()} km` : t('common.none')}</td>
                 </tr>
               ))}
               {!loading && data?.items.length === 0 && (
                 <tr><td colSpan={4} className="px-4 py-10 text-center text-muted">
-                  {search ? 'No records match your search.' : 'No inspections yet — start with New inspection.'}
+                  {search ? t('records.noMatch') : t('records.empty')}
                 </td></tr>
               )}
             </tbody>
           </table>
-          {loading && <div className="flex items-center gap-2 text-muted py-8 justify-center"><Spinner className="h-4 w-4" /> Loading…</div>}
+          {loading && <div className="flex items-center gap-2 text-muted py-8 justify-center"><Spinner className="h-4 w-4" /> {t('common.loading')}</div>}
         </div>
         {data && <Pagination page={data.page} pages={data.pages} total={data.total} onChange={setPage} />}
       </div>

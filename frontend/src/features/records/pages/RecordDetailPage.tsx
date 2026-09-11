@@ -1,10 +1,14 @@
 import { AlertTriangle, ArrowLeft, Loader2, Pencil, Printer, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { Alert } from '../../../components/Alert';
 import { Plate } from '../../../components/Plate';
 import { Spinner } from '../../../components/Spinner';
+import { formatDate } from '../../../lib/i18n/formatDate';
+import { resolveLabel } from '../../../lib/i18n/resolveLabel';
 import { FieldRenderer } from '../../inspect/fields/FieldRenderer';
 import { fetchFormDefinition } from '../../inspect/formDefinitionSlice';
 import { emptyValueFor, fromWireValue, toWireValue } from '../../inspect/types';
@@ -12,14 +16,20 @@ import type { FieldValue } from '../../inspect/types';
 import { ValueDisplay } from '../components/ValueDisplay';
 import { clearRecord, deleteRecord, fetchRecord, updateRecord } from '../recordSlice';
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-const specLabel = (v: { gearbox: string | null; motivePower: string | null; driveMode: string | null }) =>
-  [v.gearbox, v.motivePower, v.driveMode].filter(Boolean).map((s) => s![0] + s!.slice(1).toLowerCase().replace('_wd', 'x4')).join(' · ') || '—';
+const ENUM_KEYS: Record<string, string> = {
+  AUTO: 'inspect.gearboxAuto', MANUAL: 'inspect.gearboxManual',
+  PETROL: 'inspect.powerPetrol', DIESEL: 'inspect.powerDiesel', GAS: 'inspect.powerGas',
+  HYBRID: 'inspect.powerHybrid', PHEV: 'inspect.powerPhev', HEV: 'inspect.powerHev',
+  FRONT: 'inspect.driveFront', REAR: 'inspect.driveRear', FOUR_WD: 'inspect.driveFourWd',
+};
+const specLabel = (t: TFunction, v: { gearbox: string | null; motivePower: string | null; driveMode: string | null }) =>
+  [v.gearbox, v.motivePower, v.driveMode].filter((x): x is string => !!x).map((x) => t(ENUM_KEYS[x] ?? x)).join(' · ') || '—';
 
 export function RecordDetailPage() {
   const { id } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const currentUser = useAppSelector((s) => s.auth.user);
   const { current: record, loading, saving, error, fieldErrors } = useAppSelector((s) => s.record);
   const { sections: fullDefinition } = useAppSelector((s) => s.formDefinition);
@@ -65,12 +75,12 @@ export function RecordDetailPage() {
   };
 
   const onDelete = async () => {
-    if (!record || !window.confirm('Delete this inspection record? This cannot be undone.')) return;
+    if (!record || !window.confirm(t('record.confirmDelete'))) return;
     const res = await dispatch(deleteRecord(record.id));
     if (deleteRecord.fulfilled.match(res)) navigate('/');
   };
 
-  if (loading && !record) return <div className="p-8 flex items-center gap-2 text-muted"><Spinner className="h-4 w-4" /> Loading…</div>;
+  if (loading && !record) return <div className="p-8 flex items-center gap-2 text-muted"><Spinner className="h-4 w-4" /> {t('common.loading')}</div>;
   if (error && !record) return <div className="p-8"><Alert>{error}</Alert></div>;
   if (!record) return null;
 
@@ -79,38 +89,43 @@ export function RecordDetailPage() {
   return (
     <div className="p-8 max-w-3xl">
       <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-4">
-        <ArrowLeft className="h-4 w-4" /> Back to records
+        <ArrowLeft className="h-4 w-4" /> {t('record.backToRecords')}
       </Link>
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Plate>{record.vehicle.regNumber}</Plate>
-            {record.legacyId && <span className="text-xs text-muted">imported record</span>}
+            {record.legacyId && <span className="text-xs text-muted">{t('record.importedRecord')}</span>}
           </div>
           <h1 className="text-2xl">{record.vehicle.brand} {record.vehicle.model}{record.vehicle.year ? ` · ${record.vehicle.year}` : ''}</h1>
-          <p className="text-muted text-sm mt-1">{specLabel(record)} · serviced {formatDate(record.servicedAt)}</p>
-          {record.createdBy && <p className="text-muted text-sm">Recorded by {record.createdBy.displayName}{record.updatedBy && record.updatedBy.id !== record.createdBy.id ? `, last edited by ${record.updatedBy.displayName}` : ''}</p>}
+          <p className="text-muted text-sm mt-1">{specLabel(t, record)} · {t('record.servicedOn').toLowerCase()} {formatDate(i18n.language, record.servicedAt)}</p>
+          {record.createdBy && (
+            <p className="text-muted text-sm">
+              {t('record.recordedBy', { name: record.createdBy.displayName })}
+              {record.updatedBy && record.updatedBy.id !== record.createdBy.id ? t('record.lastEditedBy', { name: record.updatedBy.displayName }) : ''}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {!editing && (
             <>
               <a href={`/records/${record.id}/print`} target="_blank" rel="noreferrer" className="btn-ghost">
-                <Printer className="h-4 w-4" /> Print
+                <Printer className="h-4 w-4" /> {t('record.print')}
               </a>
-              <button className="btn-ghost" onClick={startEditing}><Pencil className="h-4 w-4" /> Edit</button>
+              <button className="btn-ghost" onClick={startEditing}><Pencil className="h-4 w-4" /> {t('record.edit')}</button>
               {canDelete && (
                 <button className="btn-danger" onClick={onDelete} disabled={saving}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} {t('record.delete')}
                 </button>
               )}
             </>
           )}
           {editing && (
             <>
-              <button className="btn-ghost" onClick={() => setEditing(false)} disabled={saving}><X className="h-4 w-4" /> Cancel</button>
+              <button className="btn-ghost" onClick={() => setEditing(false)} disabled={saving}><X className="h-4 w-4" /> {t('common.cancel')}</button>
               <button className="btn-primary" onClick={onSave} disabled={saving}>
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />} Save changes
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />} {t('record.saveChanges')}
               </button>
             </>
           )}
@@ -123,19 +138,19 @@ export function RecordDetailPage() {
         <div className="space-y-6">
           <div className="panel p-4 grid grid-cols-2 gap-4 max-w-md">
             <label className="block">
-              <span className="field-label">Mileage (km)</span>
+              <span className="field-label">{t('inspect.mileage')}</span>
               <input type="number" className="field-input" value={kilometers} onChange={(e) => setKilometers(e.target.value)} />
             </label>
             <label className="block">
-              <span className="field-label">Serviced on</span>
+              <span className="field-label">{t('record.servicedOn')}</span>
               <input type="date" className="field-input" value={servicedAt} onChange={(e) => setServicedAt(e.target.value)} />
             </label>
           </div>
           {fullDefinition.length === 0 ? (
-            <div className="flex items-center gap-2 text-muted py-6"><Spinner className="h-4 w-4" /> Loading form…</div>
+            <div className="flex items-center gap-2 text-muted py-6"><Spinner className="h-4 w-4" /> {t('common.loading')}</div>
           ) : fullDefinition.map((section) => (
             <div key={section.id} className="panel p-4">
-              <h2 className="text-lg mb-1">{section.titleEn}</h2>
+              <h2 className="text-lg mb-1">{resolveLabel(i18n.language, section.titleEn, section.titleIt)}</h2>
               <div className="divide-y divide-steel">
                 {section.fields.map((field) => (
                   <div key={field.id}>
@@ -153,15 +168,15 @@ export function RecordDetailPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {record.kilometers != null && <p className="text-muted">Mileage: {record.kilometers.toLocaleString()} km</p>}
-          {record.sections.length === 0 && <p className="text-muted">No checklist items were recorded for this visit.</p>}
+          {record.kilometers != null && <p className="text-muted">{t('record.mileageLine', { km: record.kilometers.toLocaleString() })}</p>}
+          {record.sections.length === 0 && <p className="text-muted">{t('record.noItems')}</p>}
           {record.sections.map((section) => (
             <div key={section.id} className="panel p-4">
-              <h2 className="text-lg mb-1">{section.titleEn}</h2>
+              <h2 className="text-lg mb-1">{resolveLabel(i18n.language, section.titleEn, section.titleIt)}</h2>
               <div className="divide-y divide-steel">
                 {section.items.map((item) => (
                   <div key={item.fieldId} className="flex items-center justify-between gap-4 py-2">
-                    <span className="text-sm text-ink">{item.labelEn}</span>
+                    <span className="text-sm text-ink">{resolveLabel(i18n.language, item.labelEn, item.labelIt)}</span>
                     <ValueDisplay type={item.type} value={item.value} />
                   </div>
                 ))}

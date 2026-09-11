@@ -1,6 +1,8 @@
 import { LayoutDashboard, LogOut, Settings2, Wrench } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { LanguageSwitcher } from '../../components/LanguageSwitcher';
 import { Logo } from '../../components/Logo';
 import { logout } from '../auth/authSlice';
 
@@ -11,31 +13,35 @@ const navIdle = 'text-muted hover:text-ink hover:bg-panel-alt/60';
 export function AppShell() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen flex">
       <aside className="w-56 shrink-0 border-r border-steel bg-panel flex flex-col">
         <div className="px-4 py-5 border-b border-steel"><Logo /></div>
+        <div className="px-4 py-3 border-b border-steel">
+          <LanguageSwitcher />
+        </div>
         <nav className="flex-1 p-3 space-y-1">
           <NavLink to="/" end className={({ isActive }) => `${navItem} ${isActive ? navActive : navIdle}`}>
-            <LayoutDashboard className="h-4 w-4" /> Records
+            <LayoutDashboard className="h-4 w-4" /> {t('nav.records')}
           </NavLink>
           <NavLink to="/inspect" className={({ isActive }) => `${navItem} ${isActive ? navActive : navIdle}`}>
-            <Wrench className="h-4 w-4" /> New inspection
+            <Wrench className="h-4 w-4" /> {t('nav.newInspection')}
           </NavLink>
           {user?.role === 'MANAGER' && (
             <NavLink to="/admin" className={({ isActive }) => `${navItem} ${isActive ? navActive : navIdle}`}>
-              <Settings2 className="h-4 w-4" /> Admin
+              <Settings2 className="h-4 w-4" /> {t('nav.admin')}
             </NavLink>
           )}
         </nav>
         <div className="p-3 border-t border-steel">
           <div className="px-3 py-2">
             <p className="text-sm text-ink truncate">{user?.displayName}</p>
-            <p className="text-xs text-muted">{user?.role === 'MANAGER' ? 'Manager' : 'Admin'}</p>
+            <p className="text-xs text-muted">{user?.role === 'MANAGER' ? t('nav.manager') : t('nav.admin_role')}</p>
           </div>
           <button onClick={() => dispatch(logout())} className={`${navItem} ${navIdle} w-full`}>
-            <LogOut className="h-4 w-4" /> Sign out
+            <LogOut className="h-4 w-4" /> {t('common.signOut')}
           </button>
         </div>
       </aside>

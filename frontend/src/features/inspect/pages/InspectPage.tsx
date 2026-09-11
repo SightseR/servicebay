@@ -1,10 +1,12 @@
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { Alert } from '../../../components/Alert';
 import { Spinner } from '../../../components/Spinner';
 import { apiFetch, ApiError } from '../../../lib/apiClient';
+import { resolveLabel } from '../../../lib/i18n/resolveLabel';
 import { VehiclePicker, isVehicleSelectionValid } from '../components/VehiclePicker';
 import type { VehicleSelection } from '../components/VehiclePicker';
 import { FieldRenderer } from '../fields/FieldRenderer';
@@ -18,6 +20,7 @@ interface FieldErrorBody { message: string; errors?: { fieldId: string; label: s
 export function InspectPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const { sections, loading, error } = useAppSelector((s) => s.formDefinition);
 
   const [vehicle, setVehicle] = useState<VehicleSelection>(null);
@@ -39,7 +42,7 @@ export function InspectPage() {
 
   const onSubmit = async () => {
     setFormError(null);
-    if (!isVehicleSelectionValid(vehicle)) { setFormError('Enter a vehicle registration to continue.'); return; }
+    if (!isVehicleSelectionValid(vehicle)) { setFormError(t('inspect.vehicleRequired')); return; }
 
     const wireValues = allFields
       .map((f) => ({ fieldId: f.id, value: toWireValue(valueFor(f)) }))
@@ -71,12 +74,12 @@ export function InspectPage() {
         const body2 = e.body as FieldErrorBody;
         if (body2.errors?.length) {
           setFieldErrors(Object.fromEntries(body2.errors.map((er) => [er.fieldId, er.message])));
-          setFormError('Some fields need attention below.');
+          setFormError(t('inspect.fixFields'));
         } else {
-          setFormError(body2.message ?? 'Could not save this inspection.');
+          setFormError(body2.message ?? t('inspect.genericError'));
         }
       } else {
-        setFormError(e instanceof ApiError ? e.message : 'Could not save this inspection.');
+        setFormError(e instanceof ApiError ? e.message : t('inspect.genericError'));
       }
     } finally {
       setSubmitting(false);
@@ -84,14 +87,14 @@ export function InspectPage() {
   };
 
   if (loading && sections.length === 0) {
-    return <div className="p-8 flex items-center gap-2 text-muted"><Spinner className="h-4 w-4" /> Loading inspection form…</div>;
+    return <div className="p-8 flex items-center gap-2 text-muted"><Spinner className="h-4 w-4" /> {t('common.loading')}</div>;
   }
   if (error) return <div className="p-8"><Alert>{error}</Alert></div>;
 
   return (
     <div className="p-8 max-w-3xl">
-      <h1 className="text-2xl mb-1">New inspection</h1>
-      <p className="text-muted mb-6">Find the vehicle, then record what was checked.</p>
+      <h1 className="text-2xl mb-1">{t('inspect.title')}</h1>
+      <p className="text-muted mb-6">{t('inspect.subtitle')}</p>
 
       {formError && <div className="mb-4"><Alert>{formError}</Alert></div>}
 
@@ -101,13 +104,13 @@ export function InspectPage() {
         {isVehicleSelectionValid(vehicle) && (
           <>
             <label className="block max-w-xs">
-              <span className="field-label">Mileage (km)</span>
+              <span className="field-label">{t('inspect.mileage')}</span>
               <input type="number" className="field-input" value={kilometers} onChange={(e) => setKilometers(e.target.value)} />
             </label>
 
             {sections.map((section) => (
               <div key={section.id} className="panel p-4">
-                <h2 className="text-lg mb-1">{section.titleEn}</h2>
+                <h2 className="text-lg mb-1">{resolveLabel(i18n.language, section.titleEn, section.titleIt)}</h2>
                 <div className="divide-y divide-steel">
                   {section.fields.map((field) => (
                     <div key={field.id}>
@@ -126,7 +129,7 @@ export function InspectPage() {
             <div className="flex justify-end">
               <button className="btn-primary" disabled={submitting} onClick={onSubmit}>
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                Save inspection
+                {t('inspect.save')}
               </button>
             </div>
           </>
