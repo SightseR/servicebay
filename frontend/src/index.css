@@ -1,3 +1,33 @@
-:root { color-scheme: dark; }
-* { box-sizing: border-box; }
-body { margin: 0; background: #0f1113; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; }
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-base text-ink font-body antialiased;
+    background-image: radial-gradient(ellipse 1200px 500px at 50% -10%, rgba(224, 163, 57, 0.06), transparent 60%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4 { @apply font-display tracking-wide; }
+  *:focus-visible { outline: 2px solid theme('colors.amber.DEFAULT'); outline-offset: 2px; }
+  ::selection { background: rgba(224, 163, 57, 0.3); }
+}
+
+@layer components {
+  .panel { @apply bg-panel border border-steel rounded; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none; }
+  .btn-primary { @apply btn bg-amber text-base hover:bg-amber-bright; }
+  .btn-ghost { @apply btn border border-steel text-ink hover:bg-panel-alt; }
+  .btn-danger { @apply btn bg-rust text-ink hover:brightness-110; }
+  .field-label { @apply block text-sm text-muted mb-1.5; }
+  .field-input {
+    @apply w-full bg-panel-alt border border-steel rounded px-3 py-2 text-ink placeholder:text-muted/60
+           focus:border-amber focus:outline-none transition-colors;
+  }
+  .plate {
+    @apply inline-flex items-center font-plate tracking-plate text-sm border border-steel-light rounded-sm
+           bg-panel-alt px-2 py-0.5 text-ink;
+  }
+}

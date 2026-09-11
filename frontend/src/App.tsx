@@ -1,8 +1,47 @@
+import { useEffect } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from './app/hooks';
+import { LoginPage } from './features/auth/pages/LoginPage';
+import { RegisterPage } from './features/auth/pages/RegisterPage';
+import { fetchMe } from './features/auth/authSlice';
+import { AppShell } from './features/shell/AppShell';
+import { ProtectedRoute } from './features/shell/ProtectedRoute';
+import { RecordsPlaceholder } from './features/shell/RecordsPlaceholder';
+
 export default function App() {
+  const dispatch = useAppDispatch();
+  const status = useAppSelector((s) => s.auth.status);
+
+  // On boot there is no access token yet (memory-only store) unless a refresh token
+  // round-trip is added later; for now this just resolves 'idle' -> 'unauthenticated'
+  // quickly so ProtectedRoute doesn't spin forever after a hard reload.
+  useEffect(() => {
+    if (status === 'idle') dispatch(fetchMe());
+  }, [status, dispatch]);
+
   return (
-    <main style={{ fontFamily: 'system-ui', padding: '2rem', background: '#0f1113', color: '#e6e6e6', minHeight: '100vh' }}>
-      <h1 style={{ margin: 0, letterSpacing: '0.08em' }}>SERVICEBAY</h1>
-      <p style={{ opacity: 0.7 }}>Chunk 1 scaffold — UI arrives in Chunk 6.</p>
-    </main>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppShell />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/" element={<RecordsPlaceholder />} />
+        <Route path="/inspect" element={<div className="p-8 text-muted">Inspection form — Chunk 8.</div>} />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requireManager>
+              <div className="p-8 text-muted">Admin — Chunk 10.</div>
+            </ProtectedRoute>
+          }
+        />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
