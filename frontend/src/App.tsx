@@ -7,7 +7,7 @@ import { fetchMe } from './features/auth/authSlice';
 import { AppShell } from './features/shell/AppShell';
 import { ProtectedRoute } from './features/shell/ProtectedRoute';
 import { UsersPage } from './features/admin/pages/UsersPage';
-import { RecordsPlaceholder } from './features/shell/RecordsPlaceholder';
+import { RecordsPage } from './features/records/pages/RecordsPage';
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -31,7 +31,7 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<RecordsPlaceholder />} />
+        <Route path="/" element={<RecordsPage />} />
         <Route path="/inspect" element={<div className="p-8 text-muted">Inspection form — Chunk 8.</div>} />
         <Route
           path="/admin"
