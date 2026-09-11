@@ -9,6 +9,8 @@ import { ProtectedRoute } from './features/shell/ProtectedRoute';
 import { UsersPage } from './features/admin/pages/UsersPage';
 import { RecordsPage } from './features/records/pages/RecordsPage';
 import { InspectPage } from './features/inspect/pages/InspectPage';
+import { RecordDetailPage } from './features/records/pages/RecordDetailPage';
+import { RecordPrintPage } from './features/records/pages/RecordPrintPage';
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -34,6 +36,7 @@ export default function App() {
       >
         <Route path="/" element={<RecordsPage />} />
         <Route path="/inspect" element={<InspectPage />} />
+        <Route path="/records/:id" element={<RecordDetailPage />} />
         <Route
           path="/admin"
           element={
@@ -43,6 +46,14 @@ export default function App() {
           }
         />
       </Route>
+      <Route
+        path="/records/:id/print"
+        element={
+          <ProtectedRoute>
+            <RecordPrintPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

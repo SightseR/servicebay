@@ -4,7 +4,8 @@ import adminUsersReducer from '../features/admin/usersSlice';
 import recordsReducer from '../features/records/recordsSlice';
 import vehicleReducer from '../features/records/vehicleSlice';
 import formDefinitionReducer from '../features/inspect/formDefinitionSlice';
+import recordReducer from '../features/records/recordSlice';
 
-export const store = configureStore({ reducer: { auth: authReducer, adminUsers: adminUsersReducer, records: recordsReducer, vehicle: vehicleReducer, formDefinition: formDefinitionReducer } });
+export const store = configureStore({ reducer: { auth: authReducer, adminUsers: adminUsersReducer, records: recordsReducer, vehicle: vehicleReducer, formDefinition: formDefinitionReducer, record: recordReducer } });
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

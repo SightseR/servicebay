@@ -45,3 +45,30 @@ export function toWireValue(fv: FieldValue): unknown {
       return fv.v.trim() !== '' ? fv.v.trim() : undefined;
   }
 }
+
+/** Inverse of toWireValue — reconstructs an editable draft from a stored value (for pre-filling edit forms). */
+export function fromWireValue(type: FieldType, stored: unknown): FieldValue {
+  switch (type) {
+    case 'CHECKLIST': {
+      const v = (stored ?? {}) as { done?: boolean; urgent?: boolean; later?: boolean; note?: string };
+      return { type, v: { done: !!v.done, urgent: !!v.urgent, later: !!v.later, note: v.note ?? '' } };
+    }
+    case 'SINGLE_CHOICE': case 'DROPDOWN': {
+      const v = stored as { optionId?: string } | string | null | undefined;
+      return { type, v: (typeof v === 'string' ? v : v?.optionId) ?? '' };
+    }
+    case 'MULTI_CHOICE': {
+      const v = stored as { options?: { optionId: string }[] } | null | undefined;
+      return { type, v: (v?.options ?? []).map((o) => o.optionId) };
+    }
+    case 'TEXT': case 'TEXTAREA': {
+      const v = stored as { text?: string } | string | null | undefined;
+      return { type, v: (typeof v === 'string' ? v : v?.text) ?? '' };
+    }
+    case 'NUMBER': {
+      const v = stored as { number?: number } | number | null | undefined;
+      const n = typeof v === 'number' ? v : v?.number;
+      return { type, v: n != null ? String(n) : '' };
+    }
+  }
+}

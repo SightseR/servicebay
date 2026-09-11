@@ -22,3 +22,24 @@ describe('toWireValue', () => {
     expect(toWireValue({ type: 'NUMBER', v: '80' })).toBe('80');
   });
 });
+
+import { fromWireValue } from './types';
+
+describe('fromWireValue (round-trip with toWireValue)', () => {
+  it('CHECKLIST', () => {
+    expect(fromWireValue('CHECKLIST', { done: true, urgent: false, later: true, note: 'x' })).toEqual({ type: 'CHECKLIST', v: { done: true, urgent: false, later: true, note: 'x' } });
+    expect(fromWireValue('CHECKLIST', undefined)).toEqual({ type: 'CHECKLIST', v: { done: false, urgent: false, later: false, note: '' } });
+  });
+  it('DROPDOWN', () => {
+    expect(fromWireValue('DROPDOWN', { optionId: 'o1', label: 'Summer' })).toEqual({ type: 'DROPDOWN', v: 'o1' });
+  });
+  it('MULTI_CHOICE', () => {
+    expect(fromWireValue('MULTI_CHOICE', { options: [{ optionId: 'a', label: 'A' }, { optionId: 'b', label: 'B' }] })).toEqual({ type: 'MULTI_CHOICE', v: ['a', 'b'] });
+  });
+  it('NUMBER', () => {
+    expect(fromWireValue('NUMBER', { number: 80 })).toEqual({ type: 'NUMBER', v: '80' });
+  });
+  it('TEXT', () => {
+    expect(fromWireValue('TEXT', { text: 'needs tyres' })).toEqual({ type: 'TEXT', v: 'needs tyres' });
+  });
+});
