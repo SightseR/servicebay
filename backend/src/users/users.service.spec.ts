@@ -24,7 +24,7 @@ describe('UsersService', () => {
     prisma.user.findUnique.mockResolvedValue({ id: OTHER, status: UserStatus.PENDING, role: Role.ADMIN });
     const res = await service.approve(OTHER, MANAGER);
     expect(res.status).toBe(UserStatus.ACTIVE);
-    expect(res.approvedById).toBe(MANAGER);
+    expect((res as any).approvedById).toBe(MANAGER);
   });
 
   it('approve rejects non-pending', async () => {
@@ -48,6 +48,6 @@ describe('UsersService', () => {
   it('disabling revokes refresh session', async () => {
     prisma.user.findUnique.mockResolvedValue({ id: OTHER, status: UserStatus.ACTIVE, role: Role.ADMIN });
     const res = await service.update(OTHER, { status: UserStatus.DISABLED }, MANAGER);
-    expect(res.refreshTokenHash).toBeNull();
+    expect((res as any).refreshTokenHash).toBeNull();
   });
 });

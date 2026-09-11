@@ -39,8 +39,8 @@ describe('FormService', () => {
     it('choice types need options', async () => {
       await expect(service.createField(SEC, { label: 'X', type: FieldType.DROPDOWN })).rejects.toBeInstanceOf(BadRequestException);
       const f = await service.createField(SEC, { label: 'X', type: FieldType.DROPDOWN, options: [{ label: 'A' }, { label: 'B' }] });
-      expect(f.options.create).toHaveLength(2);
-      expect(f.options.create[1].sortOrder).toBe(20);
+      expect((f as any).options.create).toHaveLength(2);
+      expect((f as any).options.create[1].sortOrder).toBe(20);
     });
     it('non-choice types reject options', async () => {
       await expect(service.createField(SEC, { label: 'X', type: FieldType.NUMBER, options: [{ label: 'A' }] })).rejects.toBeInstanceOf(BadRequestException);
