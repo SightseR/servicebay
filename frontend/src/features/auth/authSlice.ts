@@ -45,6 +45,22 @@ export const restoreSession = createAsyncThunk<AuthUser, void, { rejectValue: vo
   return user ?? rejectWithValue();
 });
 
+export const updateProfile = createAsyncThunk<AuthUser, { displayName: string }, { rejectValue: string }>(
+  'auth/updateProfile',
+  async (body, { rejectWithValue }) => {
+    try { return await apiFetch<AuthUser>('/auth/me', { method: 'PATCH', body }); }
+    catch (e) { return rejectWithValue(e instanceof ApiError ? e.message : 'Could not save'); }
+  },
+);
+
+export const changePassword = createAsyncThunk<void, { currentPassword: string; newPassword: string }, { rejectValue: string }>(
+  'auth/changePassword',
+  async (body, { rejectWithValue }) => {
+    try { await apiFetch('/auth/me/password', { method: 'PATCH', body }); }
+    catch (e) { return rejectWithValue(e instanceof ApiError ? e.message : 'Could not change password'); }
+  },
+);
+
 export const logout = createAsyncThunk('auth/logout', async () => {
   try { await apiFetch('/auth/logout', { method: 'POST' }); } catch { /* best effort — cookie is cleared server-side */ }
   tokenStore.clear();
@@ -67,6 +83,8 @@ const authSlice = createSlice({
     b.addCase(restoreSession.fulfilled, (s, a) => { s.status = 'authenticated'; s.user = a.payload; });
     b.addCase(restoreSession.rejected, (s) => { s.status = 'unauthenticated'; s.user = null; });
     b.addCase(logout.fulfilled, (s) => { s.status = 'unauthenticated'; s.user = null; });
+    b.addCase(updateProfile.fulfilled, (s, a) => { if (s.user) s.user = { ...s.user, ...a.payload, sid: s.user.sid }; });
+    b.addCase(changePassword.fulfilled, (s) => { if (s.user) s.user.mustChangePassword = false; });
   },
 });
 

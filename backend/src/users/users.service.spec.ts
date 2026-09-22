@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Role, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { UsersService } from './users.service';
+import { generateTemporaryPassword, UsersService } from './users.service';
 
 const MANAGER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const OTHER = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -55,5 +55,35 @@ describe('UsersService', () => {
     prisma.user.findUnique.mockResolvedValue({ id: OTHER, status: UserStatus.ACTIVE, role: Role.ADMIN });
     await service.update(OTHER, { displayName: 'New Name' }, MANAGER);
     expect(prisma.session.updateMany).not.toHaveBeenCalled();
+  });
+
+  describe('resetPassword (manager)', () => {
+    it('returns a one-time temporary password, flags the user, and revokes their sessions', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: OTHER, status: UserStatus.ACTIVE, role: Role.ADMIN });
+      const res = await service.resetPassword(OTHER, MANAGER);
+      expect(res.temporaryPassword).toHaveLength(12);
+      const data = prisma.user.update.mock.calls[0][0].data;
+      expect(data.mustChangePassword).toBe(true);
+      expect(data.passwordHash).not.toContain(res.temporaryPassword); // stored hashed, never in clear
+      expect(prisma.session.updateMany).toHaveBeenCalledWith({ where: { userId: OTHER, revokedAt: null }, data: { revokedAt: expect.any(Date) } });
+    });
+
+    it('cannot be used on yourself or on a pending user', async () => {
+      await expect(service.resetPassword(MANAGER, MANAGER)).rejects.toBeInstanceOf(BadRequestException);
+      prisma.user.findUnique.mockResolvedValue({ id: OTHER, status: UserStatus.PENDING, role: Role.ADMIN });
+      await expect(service.resetPassword(OTHER, MANAGER)).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+});
+
+describe('generateTemporaryPassword', () => {
+  it('always satisfies the change-password rules and avoids ambiguous characters', () => {
+    for (let i = 0; i < 200; i++) {
+      const p = generateTemporaryPassword();
+      expect(p).toHaveLength(12);
+      expect(p).toMatch(/[A-Za-z]/);
+      expect(p).toMatch(/\d/);
+      expect(p).not.toMatch(/[0O1lI]/);
+    }
   });
 });

@@ -33,12 +33,13 @@ export function ttlToMs(ttl: string): number {
   return { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[m[2] as 's' | 'm' | 'h' | 'd']! * n;
 }
 
-export const toAuthUser = (u: Pick<User, 'id' | 'email' | 'displayName' | 'role' | 'status'>, sid?: string): AuthUser => ({
+export const toAuthUser = (u: Pick<User, 'id' | 'email' | 'displayName' | 'role' | 'status' | 'mustChangePassword'>, sid?: string): AuthUser => ({
   id: u.id,
   email: u.email,
   displayName: u.displayName,
   role: u.role,
   status: u.status,
+  mustChangePassword: u.mustChangePassword,
   ...(sid ? { sid } : {}),
 });
 
@@ -121,13 +122,25 @@ export class AuthService {
     await this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+  /** Changes the caller's own password. Every OTHER device is signed out; the current session stays. */
+  async changePassword(userId: string, dto: ChangePasswordDto, keepSid?: string): Promise<void> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
       throw new UnauthorizedException('Current password is incorrect');
     }
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS) } });
-    await this.logoutAll(userId); // a changed password invalidates every device
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS), mustChangePassword: false },
+    });
+    await this.prisma.session.updateMany({
+      where: { userId, revokedAt: null, ...(keepSid ? { NOT: { id: keepSid } } : {}) },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  async updateProfile(userId: string, displayName: string): Promise<AuthUser> {
+    const user = await this.prisma.user.update({ where: { id: userId }, data: { displayName } });
+    return toAuthUser(user);
   }
 
   private async issueTokens(user: User, sid: string, refreshExpiresAt: Date): Promise<IssuedTokens> {

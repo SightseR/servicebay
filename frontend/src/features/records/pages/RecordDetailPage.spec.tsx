@@ -12,9 +12,9 @@ import { RecordDetailPage } from './RecordDetailPage';
 const jsonRes = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-const admin1 = { id: 'u1', email: 'a@x', displayName: 'Admin One', role: 'ADMIN', status: 'ACTIVE' };
-const admin2 = { id: 'u2', email: 'b@x', displayName: 'Admin Two', role: 'ADMIN', status: 'ACTIVE' };
-const manager = { id: 'm1', email: 'm@x', displayName: 'Manager', role: 'MANAGER', status: 'ACTIVE' };
+const admin1 = { id: 'u1', email: 'a@x', displayName: 'Admin One', role: 'ADMIN', status: 'ACTIVE', mustChangePassword: false };
+const admin2 = { id: 'u2', email: 'b@x', displayName: 'Admin Two', role: 'ADMIN', status: 'ACTIVE', mustChangePassword: false };
+const manager = { id: 'm1', email: 'm@x', displayName: 'Manager', role: 'MANAGER', status: 'ACTIVE', mustChangePassword: false };
 
 const baseRecord = {
   id: 'r1', kilometers: 123456, gearbox: 'AUTO', motivePower: 'PETROL', driveMode: 'FRONT',

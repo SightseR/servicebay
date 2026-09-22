@@ -10,6 +10,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthResponse, AuthUser, IssuedTokens } from './types';
 
 /** Stricter than the global default: brute-force and signup-spam protection. */
@@ -83,10 +84,15 @@ export class AuthController {
     return user;
   }
 
+  @Patch('me')
+  updateProfile(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
+    return this.auth.updateProfile(user.id, dto.displayName);
+  }
+
+  /** Other devices are signed out; this one keeps its session, so the cookie stays. */
   @Patch('me/password')
   @HttpCode(204)
-  async changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto, @Res({ passthrough: true }) res: Response) {
-    await this.auth.changePassword(user.id, dto);
-    clearRefreshCookie(res, this.isProduction);
+  async changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
+    await this.auth.changePassword(user.id, dto, user.sid);
   }
 }

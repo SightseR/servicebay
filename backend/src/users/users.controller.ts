@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -25,6 +25,12 @@ export class UsersController {
   @Patch(':id/approve')
   approve(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() manager: AuthUser) {
     return this.users.approve(id, manager.id);
+  }
+
+  @Post(':id/reset-password')
+  @HttpCode(200)
+  resetPassword(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() manager: AuthUser) {
+    return this.users.resetPassword(id, manager.id);
   }
 
   @Patch(':id')

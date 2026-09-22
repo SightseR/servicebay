@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Alert } from '../../../components/Alert';
 import { FormField, TextInput } from '../../../components/FormField';
+import { PasswordInput } from '../../../components/PasswordInput';
 import { Logo } from '../../../components/Logo';
 import { Spinner } from '../../../components/Spinner';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
@@ -53,7 +54,7 @@ export function LoginPage() {
               <TextInput type="email" required autoFocus autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
             </FormField>
             <FormField label={t('auth.password')}>
-              <TextInput type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <PasswordInput required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </FormField>
             <button type="submit" className="btn-primary w-full" disabled={submitting}>
               {submitting && <Spinner className="h-4 w-4" />}

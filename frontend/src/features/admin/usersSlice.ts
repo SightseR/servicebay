@@ -10,6 +10,7 @@ export interface ManagedUser {
   displayName: string;
   role: Role;
   status: UserStatus;
+  mustChangePassword: boolean;
   approvedAt: string | null;
   createdAt: string;
   approvedBy: { id: string; displayName: string } | null;
@@ -60,6 +61,19 @@ export const updateUser = createAsyncThunk<ManagedUser, UpdateUserInput, { rejec
   },
 );
 
+/** Manager reset: the temporary password comes back exactly once and is never stored anywhere on the client. */
+export const resetUserPassword = createAsyncThunk<{ id: string; temporaryPassword: string }, string, { rejectValue: { id: string; message: string } }>(
+  'admin/users/resetPassword',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await apiFetch<{ temporaryPassword: string }>(`/users/${id}/reset-password`, { method: 'POST' });
+      return { id, temporaryPassword: res.temporaryPassword };
+    } catch (e) {
+      return rejectWithValue({ id, message: e instanceof ApiError ? e.message : 'Reset failed' });
+    }
+  },
+);
+
 const usersSlice = createSlice({
   name: 'adminUsers',
   initialState,
@@ -71,6 +85,14 @@ const usersSlice = createSlice({
     b.addCase(fetchUsers.fulfilled, (s, a) => { s.loading = false; s.items = a.payload; });
     b.addCase(fetchUsers.rejected, (s, a) => { s.loading = false; s.error = a.payload ?? 'Could not load users'; });
 
+    b.addCase(resetUserPassword.pending, (s, a) => { s.rowBusy[a.meta.arg] = true; });
+    b.addCase(resetUserPassword.fulfilled, (s, a) => {
+      s.rowBusy[a.payload.id] = false;
+      delete s.rowError[a.payload.id];
+      const u = s.items.find((x) => x.id === a.payload.id);
+      if (u) u.mustChangePassword = true;
+    });
+    b.addCase(resetUserPassword.rejected, (s, a) => { const id = a.payload?.id; if (id) { s.rowBusy[id] = false; s.rowError[id] = a.payload?.message; } });
     b.addCase(approveUser.pending, (s, a) => { s.rowBusy[a.meta.arg] = true; });
     b.addCase(updateUser.pending, (s, a) => { s.rowBusy[a.meta.arg.id] = true; });
     for (const thunk of [approveUser, updateUser]) {

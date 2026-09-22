@@ -2,6 +2,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import { static as expressStatic } from 'express';
+import * as path from 'path';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -15,6 +17,17 @@ async function bootstrap() {
   app.getHttpAdapter().getInstance().set('trust proxy', true);
   app.use(helmet());
   app.use(cookieParser());
+  // Uploaded files (company logo). Public by design — a logo is not sensitive — but served
+  // with headers that stop anything in it from executing if opened directly.
+  app.use('/uploads', expressStatic(path.resolve(config.get<string>('UPLOADS_DIR') ?? 'uploads'), {
+    index: false,
+    dotfiles: 'deny',
+    maxAge: '1d',
+    setHeaders: (res) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    },
+  }));
   app.enableCors({ origin: config.get<string>('CORS_ORIGIN')?.split(','), credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableShutdownHooks();

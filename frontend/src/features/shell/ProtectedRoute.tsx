@@ -15,5 +15,9 @@ export function ProtectedRoute({ children, requireManager = false }: { children:
   if (requireManager && user.role !== 'MANAGER') {
     return <Navigate to="/" replace />;
   }
+  // A manager-reset account can only reach the profile page until a new password is set.
+  if (user.mustChangePassword && location.pathname !== '/profile') {
+    return <Navigate to="/profile" replace />;
+  }
   return <>{children}</>;
 }

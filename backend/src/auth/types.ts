@@ -18,6 +18,7 @@ export interface AuthUser {
   displayName: string;
   role: Role;
   status: UserStatus;
+  mustChangePassword: boolean;
   /** current session id, from the access token */
   sid?: string;
 }

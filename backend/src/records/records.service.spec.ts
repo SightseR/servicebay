@@ -6,7 +6,7 @@ import { VehiclesService } from '../vehicles/vehicles.service';
 import { RecordsService } from './records.service';
 
 const REC = '33333333-3333-4333-8333-333333333333';
-const admin = { id: 'a', email: 'a@x', displayName: 'A', role: Role.ADMIN, status: UserStatus.ACTIVE };
+const admin = { id: 'a', email: 'a@x', displayName: 'A', role: Role.ADMIN, status: UserStatus.ACTIVE, mustChangePassword: false };
 const other = { ...admin, id: 'b' };
 const manager = { ...admin, id: 'm', role: Role.MANAGER };
 

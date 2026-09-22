@@ -71,7 +71,9 @@ export function RecordPrintPage() {
       <div className="max-w-[210mm] mx-auto p-10">
         <header className="flex items-start justify-between border-b-2 border-neutral-900 pb-4 mb-6">
           <div>
-            {c?.logoPath && <img src={c.logoPath} alt="" className="h-12 mb-2" />}
+            {/* Logo: fixed 16 mm tall, width follows the image's own ratio, capped at 60 mm.
+                Rendered only when set — no reserved space otherwise, so the header stacks cleanly. */}
+            {c?.logoPath && <img src={c.logoPath} alt="" className="mb-3 object-contain" style={{ height: '16mm', maxWidth: '60mm' }} />}
             <h1 className="font-display text-2xl tracking-wide">{c?.companyName || t('print.reportTitle')}</h1>
             {c?.tagline && <p className="text-neutral-600">{c.tagline}</p>}
           </div>

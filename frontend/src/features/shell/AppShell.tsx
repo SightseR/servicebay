@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Settings2, Wrench } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings2, UserCircle2, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
@@ -36,10 +36,13 @@ export function AppShell() {
           )}
         </nav>
         <div className="p-3 border-t border-steel">
-          <div className="px-3 py-2">
-            <p className="text-sm text-ink truncate">{user?.displayName}</p>
-            <p className="text-xs text-muted">{user?.role === 'MANAGER' ? t('nav.manager') : t('nav.admin_role')}</p>
-          </div>
+          <NavLink to="/profile" className={({ isActive }) => `${navItem} ${isActive ? navActive : navIdle} mb-1`}>
+            <UserCircle2 className="h-4 w-4 shrink-0" />
+            <span className="min-w-0">
+              <span className="block text-sm truncate">{user?.displayName}</span>
+              <span className="block text-xs text-muted">{user?.role === 'MANAGER' ? t('nav.manager') : t('nav.admin_role')}</span>
+            </span>
+          </NavLink>
           <button onClick={() => dispatch(logout())} className={`${navItem} ${navIdle} w-full`}>
             <LogOut className="h-4 w-4" /> {t('common.signOut')}
           </button>

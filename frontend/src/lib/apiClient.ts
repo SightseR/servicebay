@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-export interface AuthUser { id: string; email: string; displayName: string; role: 'MANAGER' | 'ADMIN'; status: string; sid?: string }
+export interface AuthUser { id: string; email: string; displayName: string; role: 'MANAGER' | 'ADMIN'; status: string; mustChangePassword: boolean; sid?: string }
 export interface AuthResponse { accessToken: string; user: AuthUser }
 
 /** Single-flight refresh: concurrent 401s share one refresh call instead of racing. */
@@ -47,6 +47,9 @@ export async function refreshOnce(): Promise<AuthUser | null> {
 
 export interface RequestOptions { method?: string; body?: unknown; skipAuth?: boolean }
 
+/** A FormData body is sent as multipart (the browser sets the boundary header itself); anything else is JSON. */
+const isFormData = (b: unknown): b is FormData => typeof FormData !== 'undefined' && b instanceof FormData;
+
 /** Core fetch wrapper: attaches the bearer token, retries once after a silent refresh on 401. */
 export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const run = async (): Promise<Response> => {
@@ -55,10 +58,10 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
       method: opts.method ?? 'GET',
       credentials: 'include',
       headers: {
-        ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(opts.body !== undefined && !isFormData(opts.body) ? { 'Content-Type': 'application/json' } : {}),
         ...(access && !opts.skipAuth ? { Authorization: `Bearer ${access}` } : {}),
       },
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: opts.body === undefined ? undefined : isFormData(opts.body) ? opts.body : JSON.stringify(opts.body),
     });
   };
 

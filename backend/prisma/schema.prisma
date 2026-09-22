@@ -63,6 +63,8 @@ model User {
   displayName      String
   role             Role       @default(ADMIN)
   status           UserStatus @default(PENDING)
+  /// set by a manager's password reset; the user must pick a new password before doing anything else
+  mustChangePassword Boolean  @default(false)
   approvedById     String?
   approvedAt       DateTime?
   createdAt        DateTime   @default(now())

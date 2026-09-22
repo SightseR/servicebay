@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Alert } from '../../../components/Alert';
 import { FormField, TextInput } from '../../../components/FormField';
+import { PasswordInput } from '../../../components/PasswordInput';
 import { Logo } from '../../../components/Logo';
 import { Spinner } from '../../../components/Spinner';
 import { useAppDispatch } from '../../../app/hooks';
@@ -66,7 +67,7 @@ export function RegisterPage() {
               <TextInput type="email" required autoComplete="username" value={form.email} onChange={set('email')} />
             </FormField>
             <FormField label={t('auth.password')} hint={t('auth.passwordHint')}>
-              <TextInput type="password" required minLength={10} autoComplete="new-password" value={form.password} onChange={set('password')} />
+              <PasswordInput required minLength={10} autoComplete="new-password" value={form.password} onChange={set('password')} />
             </FormField>
             <button type="submit" className="btn-primary w-full" disabled={submitting}>
               {submitting && <Spinner className="h-4 w-4" />}

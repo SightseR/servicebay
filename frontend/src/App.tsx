@@ -13,6 +13,7 @@ import { CompanyProfilePage } from './features/admin/company/pages/CompanyProfil
 import { RecordsPage } from './features/records/pages/RecordsPage';
 import { InspectPage } from './features/inspect/pages/InspectPage';
 import { RecordDetailPage } from './features/records/pages/RecordDetailPage';
+import { ProfilePage } from './features/profile/pages/ProfilePage';
 import { RecordPrintPage } from './features/records/pages/RecordPrintPage';
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/" element={<RecordsPage />} />
         <Route path="/inspect" element={<InspectPage />} />
         <Route path="/records/:id" element={<RecordDetailPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route
           path="/admin"
           element={

@@ -18,6 +18,7 @@ const baseUser = async (over: Partial<Record<string, unknown>> = {}) => ({
   displayName: 'Admin',
   role: Role.ADMIN,
   status: UserStatus.ACTIVE,
+  mustChangePassword: false,
   approvedById: null,
   approvedAt: null,
   createdAt: new Date(),
@@ -61,7 +62,8 @@ describe('AuthService (sessions)', () => {
     });
     prisma.session.updateMany.mockImplementation(async ({ where, data }: { where: any; data: any }) => {
       for (const row of sessions.values()) {
-        if ((!where.id || row.id === where.id) && (!where.userId || row.userId === where.userId) && row.revokedAt === null) Object.assign(row, data);
+        const excluded = where.NOT?.id && row.id === where.NOT.id;
+        if ((!where.id || row.id === where.id) && (!where.userId || row.userId === where.userId) && !excluded && row.revokedAt === null) Object.assign(row, data);
       }
       return { count: 1 };
     });
@@ -151,6 +153,26 @@ describe('AuthService (sessions)', () => {
       const { refreshToken } = await service.login({ email: 'admin@test.local', password: 'Password123' });
       userRow = await baseUser({ status: UserStatus.DISABLED });
       await expect(service.refresh(refreshToken)).rejects.toThrow('Refresh not allowed');
+    });
+  });
+
+  describe('changePassword', () => {
+    it('keeps the current session, revokes the others, and clears mustChangePassword', async () => {
+      userRow = await baseUser({ mustChangePassword: true });
+      await service.login({ email: 'admin@test.local', password: 'Password123' });
+      sessions.set('phone', { id: 'phone', userId: userRow.id, refreshTokenHash: 'x', expiresAt: new Date(Date.now() + 1000), revokedAt: null });
+      prisma.user.findUniqueOrThrow.mockResolvedValue(userRow);
+      prisma.user.update.mockImplementation(async ({ data }: { data: any }) => ({ ...userRow, ...data }));
+
+      await service.changePassword(userRow.id, { currentPassword: 'Password123', newPassword: 'NewPassword456' }, SID);
+      expect(prisma.user.update.mock.calls[0][0].data.mustChangePassword).toBe(false);
+      expect(sessions.get(SID)!.revokedAt).toBeNull();
+      expect(sessions.get('phone')!.revokedAt).not.toBeNull();
+    });
+
+    it('rejects a wrong current password', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(userRow);
+      await expect(service.changePassword(userRow.id, { currentPassword: 'nope', newPassword: 'NewPassword456' })).rejects.toBeInstanceOf(UnauthorizedException);
     });
   });
 

@@ -22,6 +22,8 @@ class EnvVars {
   @Transform(trim) @IsString() JWT_ACCESS_TTL = '15m';
   @Transform(trim) @IsString() JWT_REFRESH_TTL = '7d';
   @Transform(trim) @IsString() CORS_ORIGIN = 'http://localhost:8080';
+  /** where uploaded files (company logo) are written; a docker volume in both dev and prod */
+  @Transform(trim) @IsString() UPLOADS_DIR = 'uploads';
 }
 
 export function validateEnv(config: Record<string, unknown>) {
