@@ -63,7 +63,6 @@ model User {
   displayName      String
   role             Role       @default(ADMIN)
   status           UserStatus @default(PENDING)
-  refreshTokenHash String?
   approvedById     String?
   approvedAt       DateTime?
   createdAt        DateTime   @default(now())
@@ -73,8 +72,28 @@ model User {
   approvedUsers  User[]          @relation("UserApprovals")
   createdRecords ServiceRecord[] @relation("RecordCreatedBy")
   updatedRecords ServiceRecord[] @relation("RecordUpdatedBy")
+  sessions       Session[]
 
   @@index([status])
+}
+
+/// One row per signed-in device (D16/D19). The refresh token itself is never stored —
+/// only its SHA-256 hash — and it lives in an httpOnly cookie on the client.
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  refreshTokenHash String
+  userAgent        String?
+  ip               String?
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ---------------------------------------------------------------- Vehicles

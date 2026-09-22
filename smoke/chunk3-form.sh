@@ -30,7 +30,8 @@ A="Authorization: Bearer $TOKEN"
 echo "== definition"
 check "definition unauthenticated 401" "$(code "$API/form/definition")" "401"
 check "seeded sections" "$(curl -s "$API/form/definition" -H "$A" | json length)" "5"
-check "seeded fields" "$(curl -s "$API/form/definition" -H "$A" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).reduce((n,s)=>n+s.fields.length,0)))")" "37"
+# count only the seeded fields (they carry config.legacyKey) so fields added later via the form builder don't break this
+check "seeded fields (legacyKey)" "$(curl -s "$API/form/definition" -H "$A" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).flatMap(s=>s.fields).filter(f=>f.config&&f.config.legacyKey).length))")" "37"
 
 echo "== sections"
 SEC=$(curl -s -X POST "$API/form/sections" -H "$A" -H "$J" -d "{\"titleEn\":\"$TITLE\",\"titleIt\":\"Sezione prova\"}" | json id)

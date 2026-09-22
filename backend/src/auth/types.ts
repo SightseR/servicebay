@@ -8,6 +8,8 @@ export interface JwtPayload {
   typ: 'access' | 'refresh';
   /** unique per token so two tokens minted in the same second never collide */
   jti: string;
+  /** session (device) this token belongs to — lets logout revoke exactly one device */
+  sid: string;
 }
 
 export interface AuthUser {
@@ -16,9 +18,18 @@ export interface AuthUser {
   displayName: string;
   role: Role;
   status: UserStatus;
+  /** current session id, from the access token */
+  sid?: string;
 }
 
-export interface TokenPair {
+/** What the API returns to the browser. The refresh token travels only in the httpOnly cookie, never in this body. */
+export interface AuthResponse {
   accessToken: string;
+  user: AuthUser;
+}
+
+/** Internal: both tokens, only ever handed to the controller so it can set the cookie. */
+export interface IssuedTokens extends AuthResponse {
   refreshToken: string;
+  refreshExpiresAt: Date;
 }

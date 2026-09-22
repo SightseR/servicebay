@@ -44,7 +44,7 @@ export class JwtAuthGuard implements CanActivate {
     });
     if (!user || user.status !== UserStatus.ACTIVE) throw new UnauthorizedException('Account not active');
 
-    req.user = user;
+    req.user = { ...user, sid: payload.sid };
     return true;
   }
 }

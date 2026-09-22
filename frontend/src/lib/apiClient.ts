@@ -5,39 +5,42 @@ export class ApiError extends Error {
   status: number;
   body: unknown;
   constructor(status: number, body: unknown, message?: string) {
-    super(message ?? (typeof (body as any)?.message === 'string' ? (body as any).message : `Request failed (${status})`));
+    super(message ?? ApiError.extractMessage(body) ?? `Request failed (${status})`);
     this.status = status;
     this.body = body;
   }
-}
 
-export interface AuthUser { id: string; email: string; displayName: string; role: 'MANAGER' | 'ADMIN'; status: string }
-interface TokenPair { accessToken: string; refreshToken: string; user: AuthUser }
-
-/** Single-flight refresh: concurrent 401s share one refresh call instead of racing. */
-let refreshing: Promise<boolean> | null = null;
-let onSessionExpired: (() => void) | null = null;
-export const setSessionExpiredHandler = (fn: (() => void) | null) => { onSessionExpired = fn; };
-
-async function doRefresh(): Promise<boolean> {
-  const { refresh } = tokenStore.get();
-  if (!refresh) return false;
-  try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: refresh }),
-    });
-    if (!res.ok) { tokenStore.clear(); return false; }
-    const data: TokenPair = await res.json();
-    tokenStore.set(data.accessToken, data.refreshToken);
-    return true;
-  } catch {
-    return false;
+  /** NestJS's ValidationPipe returns `message` as a string[] (one entry per failed rule) — join those into one readable line. A plain string passes through unchanged. */
+  private static extractMessage(body: unknown): string | undefined {
+    const raw = (body as { message?: unknown } | undefined)?.message;
+    if (typeof raw === 'string') return raw;
+    if (Array.isArray(raw) && raw.every((m) => typeof m === 'string')) return raw.join('; ');
+    return undefined;
   }
 }
 
-async function refreshOnce(): Promise<boolean> {
+export interface AuthUser { id: string; email: string; displayName: string; role: 'MANAGER' | 'ADMIN'; status: string; sid?: string }
+export interface AuthResponse { accessToken: string; user: AuthUser }
+
+/** Single-flight refresh: concurrent 401s share one refresh call instead of racing. */
+let refreshing: Promise<AuthUser | null> | null = null;
+let onSessionExpired: (() => void) | null = null;
+export const setSessionExpiredHandler = (fn: (() => void) | null) => { onSessionExpired = fn; };
+
+/** Asks the server for a new access token using the httpOnly refresh cookie. Returns the user on success, null otherwise. */
+async function doRefresh(): Promise<AuthUser | null> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
+    if (!res.ok) { tokenStore.clear(); return null; }
+    const data: AuthResponse = await res.json();
+    tokenStore.set(data.accessToken);
+    return data.user;
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshOnce(): Promise<AuthUser | null> {
   if (!refreshing) refreshing = doRefresh().finally(() => { refreshing = null; });
   return refreshing;
 }
@@ -47,9 +50,10 @@ export interface RequestOptions { method?: string; body?: unknown; skipAuth?: bo
 /** Core fetch wrapper: attaches the bearer token, retries once after a silent refresh on 401. */
 export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const run = async (): Promise<Response> => {
-    const { access } = tokenStore.get();
+    const access = tokenStore.get();
     return fetch(`${API_BASE}${path}`, {
       method: opts.method ?? 'GET',
+      credentials: 'include',
       headers: {
         ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(access && !opts.skipAuth ? { Authorization: `Bearer ${access}` } : {}),
@@ -60,8 +64,8 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
 
   let res = await run();
   if (res.status === 401 && !opts.skipAuth) {
-    const ok = await refreshOnce();
-    if (ok) res = await run();
+    const user = await refreshOnce();
+    if (user) res = await run();
     else { tokenStore.clear(); onSessionExpired?.(); }
   }
 

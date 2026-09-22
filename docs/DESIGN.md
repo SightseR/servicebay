@@ -28,6 +28,13 @@ Replacement for the client's Firebase "vehicle-service-app". Single garage, mult
 - D4 Report: sections in order, fields with showInReport and a "selected" value; header from CompanyProfile (blank sections omitted).
 - D5 Auth: JWT access (15m) + refresh (7d, hashed in DB), global JwtAuthGuard + RolesGuard, single-flight refresh in RTK Query.
 - D6 Repo: backend/ frontend/ infra/ migration/ docs/. Domain lives only in .env / proxy labels.
+- D9–D15 Bilingual content (EN/IT): every admin-authored name is an EN/IT pair (IT optional, falls back to EN); RecordValue keeps bilingual label snapshots; API returns both languages; IT is the UI default; company profile is single-language, shown as entered.
+- D16 Refresh token lives in an httpOnly, Secure (prod), SameSite=Lax cookie scoped to /api/v1/auth — never readable by JS. Access token (15 min) stays in memory only.
+- D17 On boot the app silently calls /auth/refresh with the cookie to restore the session; no login on reload.
+- D18 Logout revokes the current device session and clears the cookie; /auth/logout-all revokes every device.
+- D19 Per-device Session rows (hash of refresh token, user agent, ip, expiry, revokedAt). Rotation on every refresh; reuse of a spent token revokes that session only. Disabling a user or changing role/password revokes all their sessions.
+- D20 Rate limiting: 300 req/min per IP globally, 10/min on login and register. Backend trusts X-Forwarded-For (only ever behind nginx/Traefik).
+- D21 Production: frontend served by nginx with HSTS, CSP (self + Google Fonts), nosniff, frame-ancestors none; Postgres has no published port; TLS terminated by Traefik on the shared host.
 - D7 Workflow: numbered chunks → tsc + tests + smoke on Kasun's machine → explicit staging → push on authorization → Hetzner after local pass.
 
 ## Chunks

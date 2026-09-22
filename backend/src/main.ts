@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -9,7 +10,11 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api/v1');
+  // The API only ever sits behind nginx/Traefik (never exposed directly), so trust the
+  // X-Forwarded-* headers they set — otherwise rate limiting would see every client as the proxy's IP.
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
   app.use(helmet());
+  app.use(cookieParser());
   app.enableCors({ origin: config.get<string>('CORS_ORIGIN')?.split(','), credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableShutdownHooks();

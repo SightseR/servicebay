@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { AuthUser, JwtPayload, TokenPair } from './types';
+import { AuthUser, IssuedTokens, JwtPayload } from './types';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -25,13 +25,24 @@ const tokenMatches = (token: string, hash: string) => {
   return a.length === b.length && timingSafeEqual(a, b);
 };
 
-export const toAuthUser = (u: Pick<User, 'id' | 'email' | 'displayName' | 'role' | 'status'>): AuthUser => ({
+/** "7d" / "15m" / "30s" → milliseconds (only the units we configure). */
+export function ttlToMs(ttl: string): number {
+  const m = /^(\d+)([smhd])$/.exec(ttl.trim());
+  if (!m) throw new Error(`Unsupported TTL format: ${ttl}`);
+  const n = Number(m[1]);
+  return { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[m[2] as 's' | 'm' | 'h' | 'd']! * n;
+}
+
+export const toAuthUser = (u: Pick<User, 'id' | 'email' | 'displayName' | 'role' | 'status'>, sid?: string): AuthUser => ({
   id: u.id,
   email: u.email,
   displayName: u.displayName,
   role: u.role,
   status: u.status,
+  ...(sid ? { sid } : {}),
 });
+
+export interface ClientInfo { userAgent?: string; ip?: string }
 
 @Injectable()
 export class AuthService {
@@ -57,7 +68,8 @@ export class AuthService {
     return { status: UserStatus.PENDING };
   }
 
-  async login(dto: LoginDto): Promise<TokenPair & { user: AuthUser }> {
+  /** Creates a new per-device session and issues its first token pair. */
+  async login(dto: LoginDto, client: ClientInfo = {}): Promise<IssuedTokens> {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     // Same error for unknown email and wrong password — don't leak which.
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
@@ -66,38 +78,47 @@ export class AuthService {
     if (user.status === UserStatus.PENDING) throw new UnauthorizedException('Account is awaiting manager approval');
     if (user.status === UserStatus.DISABLED) throw new UnauthorizedException('Account is disabled');
 
-    const tokens = await this.issueTokens(user);
-    return { ...tokens, user: toAuthUser(user) };
+    const expiresAt = new Date(Date.now() + ttlToMs(this.config.get('JWT_REFRESH_TTL') ?? '7d'));
+    const session = await this.prisma.session.create({
+      data: { userId: user.id, refreshTokenHash: 'pending', userAgent: client.userAgent ?? null, ip: client.ip ?? null, expiresAt },
+    });
+    return this.issueTokens(user, session.id, expiresAt);
   }
 
-  /** Rotates the refresh token: the old one is invalidated on use. */
-  async refresh(refreshToken: string): Promise<TokenPair & { user: AuthUser }> {
+  /**
+   * Rotates the refresh token for one session. Presenting a refresh token that no
+   * longer matches the session's stored hash means it was already rotated (or stolen
+   * and used): that session is revoked. Other devices are unaffected.
+   */
+  async refresh(refreshToken: string): Promise<IssuedTokens> {
     let payload: JwtPayload;
     try {
-      payload = await this.jwt.verifyAsync<JwtPayload>(refreshToken, {
-        secret: this.config.getOrThrow('JWT_REFRESH_SECRET'),
-      });
+      payload = await this.jwt.verifyAsync<JwtPayload>(refreshToken, { secret: this.config.getOrThrow('JWT_REFRESH_SECRET') });
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
     if (payload.typ !== 'refresh') throw new UnauthorizedException('Wrong token type');
 
-    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || user.status !== UserStatus.ACTIVE || !user.refreshTokenHash) {
+    const session = await this.prisma.session.findUnique({ where: { id: payload.sid }, include: { user: true } });
+    if (!session || session.revokedAt || session.expiresAt <= new Date() || session.user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('Refresh not allowed');
     }
-    if (!tokenMatches(refreshToken, user.refreshTokenHash)) {
-      // Token was already rotated or revoked — treat as reuse, revoke everything.
-      await this.prisma.user.update({ where: { id: user.id }, data: { refreshTokenHash: null } });
+    if (!tokenMatches(refreshToken, session.refreshTokenHash)) {
+      await this.prisma.session.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
       throw new UnauthorizedException('Refresh token reuse detected');
     }
-
-    const tokens = await this.issueTokens(user);
-    return { ...tokens, user: toAuthUser(user) };
+    return this.issueTokens(session.user, session.id, session.expiresAt);
   }
 
-  async logout(userId: string): Promise<void> {
-    await this.prisma.user.update({ where: { id: userId }, data: { refreshTokenHash: null } });
+  /** Revokes just this device's session. */
+  async logout(sid: string | undefined): Promise<void> {
+    if (!sid) return;
+    await this.prisma.session.updateMany({ where: { id: sid, revokedAt: null }, data: { revokedAt: new Date() } });
+  }
+
+  /** Revokes every session of a user ("log out everywhere", and used when an account is disabled). */
+  async logoutAll(userId: string): Promise<void> {
+    await this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
@@ -105,14 +126,12 @@ export class AuthService {
     if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
       throw new UnauthorizedException('Current password is incorrect');
     }
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS), refreshTokenHash: null },
-    });
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS) } });
+    await this.logoutAll(userId); // a changed password invalidates every device
   }
 
-  private async issueTokens(user: User): Promise<TokenPair> {
-    const base = { sub: user.id, email: user.email, role: user.role };
+  private async issueTokens(user: User, sid: string, refreshExpiresAt: Date): Promise<IssuedTokens> {
+    const base = { sub: user.id, email: user.email, role: user.role, sid };
     const accessToken = await this.jwt.signAsync({ ...base, typ: 'access', jti: randomUUID() } satisfies JwtPayload, {
       secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
       expiresIn: this.config.get('JWT_ACCESS_TTL') ?? '15m',
@@ -121,10 +140,10 @@ export class AuthService {
       secret: this.config.getOrThrow('JWT_REFRESH_SECRET'),
       expiresIn: this.config.get('JWT_REFRESH_TTL') ?? '7d',
     });
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { refreshTokenHash: hashToken(refreshToken) },
+    await this.prisma.session.update({
+      where: { id: sid },
+      data: { refreshTokenHash: hashToken(refreshToken), lastUsedAt: new Date() },
     });
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, refreshExpiresAt, user: toAuthUser(user, sid) };
   }
 }

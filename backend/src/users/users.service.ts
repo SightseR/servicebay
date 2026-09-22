@@ -64,14 +64,11 @@ export class UsersService {
       throw new BadRequestException('Approve the user first');
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        ...dto,
-        // revoke sessions when disabling or changing role
-        ...(dto.status === UserStatus.DISABLED || (dto.role && dto.role !== user.role) ? { refreshTokenHash: null } : {}),
-      },
-      select: publicSelect,
-    });
+    const updated = await this.prisma.user.update({ where: { id }, data: dto, select: publicSelect });
+    // Disabling, or changing role, must take effect on every device immediately (D2): revoke all sessions.
+    if (dto.status === UserStatus.DISABLED || (dto.role && dto.role !== user.role)) {
+      await this.prisma.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+    }
+    return updated;
   }
 }

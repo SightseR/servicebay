@@ -9,7 +9,7 @@ const OTHER = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 describe('UsersService', () => {
   let service: UsersService;
-  const prisma = { user: { findUnique: jest.fn(), update: jest.fn(), count: jest.fn(), findMany: jest.fn() } };
+  const prisma = { user: { findUnique: jest.fn(), update: jest.fn(), count: jest.fn(), findMany: jest.fn() }, session: { updateMany: jest.fn() } };
 
   beforeEach(async () => {
     jest.resetAllMocks();
@@ -45,9 +45,15 @@ describe('UsersService', () => {
     await expect(service.update(MANAGER, { status: UserStatus.DISABLED }, MANAGER)).rejects.toThrow('own account');
   });
 
-  it('disabling revokes refresh session', async () => {
+  it('disabling revokes every session of that user', async () => {
     prisma.user.findUnique.mockResolvedValue({ id: OTHER, status: UserStatus.ACTIVE, role: Role.ADMIN });
-    const res = await service.update(OTHER, { status: UserStatus.DISABLED }, MANAGER);
-    expect((res as any).refreshTokenHash).toBeNull();
+    await service.update(OTHER, { status: UserStatus.DISABLED }, MANAGER);
+    expect(prisma.session.updateMany).toHaveBeenCalledWith({ where: { userId: OTHER, revokedAt: null }, data: { revokedAt: expect.any(Date) } });
+  });
+
+  it('a plain rename does not touch sessions', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: OTHER, status: UserStatus.ACTIVE, role: Role.ADMIN });
+    await service.update(OTHER, { displayName: 'New Name' }, MANAGER);
+    expect(prisma.session.updateMany).not.toHaveBeenCalled();
   });
 });

@@ -6,3 +6,4 @@ dist/
 uploads/
 # raw client data export — never commit
 migration/*.json
+.env.prod

@@ -1,0 +1,62 @@
+# ServiceBay — production stack for the shared Hetzner host.
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Traefik (a separate stack on the host) terminates TLS and routes ${DOMAIN} to the
+# frontend container over the shared "edge" network. Nothing here publishes a host port.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # NO "ports:" — the database is reachable only from this compose network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  backend:
+    build:
+      context: ./backend
+      target: prod
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks: [internal, edge]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.servicebay.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.servicebay.entrypoints=websecure
+      - traefik.http.routers.servicebay.tls.certresolver=letsencrypt
+      - traefik.http.services.servicebay.loadbalancer.server.port=80
+
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  internal:
+  edge:
+    external: true   # created once on the host, shared by every project behind Traefik
