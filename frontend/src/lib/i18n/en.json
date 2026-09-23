@@ -35,7 +35,17 @@
     "alreadyHaveAccount": "Already have an account?",
     "accountRequestedTitle": "Account requested",
     "accountRequestedBody": "A manager needs to approve your account before you can sign in. You'll be able to log in once that happens.",
-    "backToSignIn": "Back to sign in"
+    "backToSignIn": "Back to sign in",
+    "forgotLink": "Forgot password?",
+    "forgotTitle": "Reset your password",
+    "forgotSubtitle": "Enter your account email and we'll send you a link to choose a new password.",
+    "sendLink": "Send reset link",
+    "forgotSent": "If an account exists for that address, a reset link is on its way. Check your inbox (and spam folder) — the link is valid for 30 minutes.",
+    "resetTitle": "Choose a new password",
+    "resetSubtitle": "Enter your new password below.",
+    "setPassword": "Set new password",
+    "resetDone": "Your password has been changed. You can sign in with it now.",
+    "resetInvalid": "This reset link is invalid or has expired. Request a new one."
   },
   "records": {
     "title": "Records",

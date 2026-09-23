@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Alert } from '../../../components/Alert';
 import { FormField, TextInput } from '../../../components/FormField';
 import { PasswordInput } from '../../../components/PasswordInput';
@@ -56,6 +56,9 @@ export function LoginPage() {
             <FormField label={t('auth.password')}>
               <PasswordInput required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </FormField>
+            <div className="text-right -mt-2">
+              <Link to="/forgot-password" className="text-xs text-muted hover:text-amber">{t('auth.forgotLink')}</Link>
+            </div>
             <button type="submit" className="btn-primary w-full" disabled={submitting}>
               {submitting && <Spinner className="h-4 w-4" />}
               {t('auth.signIn')}

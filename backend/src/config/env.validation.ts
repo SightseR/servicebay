@@ -1,5 +1,5 @@
 import { plainToInstance, Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsString, MinLength, validateSync } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, MinLength, validateSync } from 'class-validator';
 
 enum NodeEnv {
   development = 'development',
@@ -24,6 +24,11 @@ class EnvVars {
   @Transform(trim) @IsString() CORS_ORIGIN = 'http://localhost:8080';
   /** where uploaded files (company logo) are written; a docker volume in both dev and prod */
   @Transform(trim) @IsString() UPLOADS_DIR = 'uploads';
+  /** public base URL of the app, used to build links in emails */
+  @Transform(trim) @IsString() APP_URL = 'http://localhost:8080';
+  /** Resend API key. Empty = emails are logged to the console instead of sent (local dev). */
+  @IsOptional() @Transform(trim) @IsString() RESEND_API_KEY?: string;
+  @Transform(trim) @IsString() MAIL_FROM = 'ServiceBay <onboarding@resend.dev>';
 }
 
 export function validateEnv(config: Record<string, unknown>) {

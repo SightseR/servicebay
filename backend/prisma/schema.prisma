@@ -75,6 +75,7 @@ model User {
   createdRecords ServiceRecord[] @relation("RecordCreatedBy")
   updatedRecords ServiceRecord[] @relation("RecordUpdatedBy")
   sessions       Session[]
+  passwordResets PasswordResetToken[]
 
   @@index([status])
 }
@@ -96,6 +97,20 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/// Email password reset (Chunk 18). Only the SHA-256 hash of the emailed token is stored.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ---------------------------------------------------------------- Vehicles

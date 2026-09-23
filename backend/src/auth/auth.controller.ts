@@ -8,6 +8,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -43,6 +44,24 @@ export class AuthController {
   async login(@Body() dto: LoginDto, @Req() req: Request, @Ip() ip: string, @Res({ passthrough: true }) res: Response) {
     const issued = await this.auth.login(dto, { userAgent: req.headers['user-agent']?.slice(0, 300), ip });
     return this.respond(res, issued);
+  }
+
+  /** Always 200 — never reveals whether the address has an account. */
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('forgot-password')
+  @HttpCode(200)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.auth.forgotPassword(dto.email);
+    return { ok: true };
+  }
+
+  @Public()
+  @Throttle(AUTH_LIMIT)
+  @Post('reset-password')
+  @HttpCode(204)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.auth.resetPassword(dto.token, dto.newPassword);
   }
 
   /**

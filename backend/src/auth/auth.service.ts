@@ -3,7 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Role, User, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { createHash, randomUUID, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
+import { MailService } from '../mail/mail.service';
+import { passwordResetEmail } from '../mail/templates';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -11,6 +13,7 @@ import { RegisterDto } from './dto/register.dto';
 import { AuthUser, IssuedTokens, JwtPayload } from './types';
 
 const BCRYPT_ROUNDS = 12;
+const RESET_TOKEN_MINUTES = 30;
 
 /**
  * Refresh tokens are hashed with SHA-256, not bcrypt: bcrypt silently truncates
@@ -51,6 +54,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {}
 
   /** New accounts are PENDING until a manager approves them (D2). */
@@ -136,6 +140,37 @@ export class AuthService {
       where: { userId, revokedAt: null, ...(keepSid ? { NOT: { id: keepSid } } : {}) },
       data: { revokedAt: new Date() },
     });
+  }
+
+  /**
+   * Email reset, step 1. Always resolves the same way whether or not the address exists
+   * (no account enumeration). Only ACTIVE users get an email; any earlier unused tokens
+   * are invalidated so exactly one link works at a time.
+   */
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || user.status !== UserStatus.ACTIVE) return;
+
+    const token = randomBytes(32).toString('hex'); // 64 hex chars, only its hash is stored
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_MINUTES * 60_000);
+    await this.prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
+    await this.prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt } });
+
+    const link = `${this.config.get('APP_URL') ?? 'http://localhost:8080'}/reset-password?token=${token}`;
+    await this.mail.send({ to: user.email, ...passwordResetEmail(link, RESET_TOKEN_MINUTES) });
+  }
+
+  /** Email reset, step 2. Consumes the token, sets the password, signs every device out. */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const row = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash: hashToken(token) }, include: { user: true } });
+    if (!row || row.usedAt || row.expiresAt <= new Date() || row.user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('This reset link is invalid or has expired');
+    }
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.update({ where: { id: row.id }, data: { usedAt: new Date() } }),
+      this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash: await bcrypt.hash(newPassword, BCRYPT_ROUNDS), mustChangePassword: false } }),
+      this.prisma.session.updateMany({ where: { userId: row.userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+    ]);
   }
 
   async updateProfile(userId: string, displayName: string): Promise<AuthUser> {

@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { Role, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService, hashToken, ttlToMs } from './auth.service';
 
@@ -43,7 +44,10 @@ describe('AuthService (sessions)', () => {
   const prisma = {
     user: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), create: jest.fn(), update: jest.fn() },
     session: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
+    passwordResetToken: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
+    $transaction: jest.fn(async (ops: unknown[]) => ops),
   };
+  const mail = { send: jest.fn(), isConfigured: false };
 
   beforeEach(async () => {
     jest.resetAllMocks();
@@ -77,11 +81,12 @@ describe('AuthService (sessions)', () => {
         AuthService,
         JwtService,
         { provide: PrismaService, useValue: prisma },
+        { provide: MailService, useValue: mail },
         {
           provide: ConfigService,
           useValue: {
             getOrThrow: (k: string) => ({ JWT_ACCESS_SECRET: SECRET_A, JWT_REFRESH_SECRET: SECRET_R })[k],
-            get: (k: string) => ({ JWT_ACCESS_TTL: '15m', JWT_REFRESH_TTL: '7d' })[k],
+            get: (k: string) => ({ JWT_ACCESS_TTL: '15m', JWT_REFRESH_TTL: '7d', APP_URL: 'https://sb.test' })[k],
           },
         },
       ],
@@ -173,6 +178,47 @@ describe('AuthService (sessions)', () => {
     it('rejects a wrong current password', async () => {
       prisma.user.findUniqueOrThrow.mockResolvedValue(userRow);
       await expect(service.changePassword(userRow.id, { currentPassword: 'nope', newPassword: 'NewPassword456' })).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe('forgotPassword / resetPassword (email)', () => {
+    it('sends a link with a fresh token and stores only its hash; earlier tokens are invalidated', async () => {
+      prisma.passwordResetToken.create.mockImplementation(async ({ data }: { data: any }) => data);
+      await service.forgotPassword('admin@test.local');
+      expect(prisma.passwordResetToken.updateMany).toHaveBeenCalledWith({ where: { userId: userRow.id, usedAt: null }, data: { usedAt: expect.any(Date) } });
+      const stored = prisma.passwordResetToken.create.mock.calls[0][0].data;
+      const sent = mail.send.mock.calls[0][0];
+      const token = new URL(sent.text.match(/https:\/\/sb\.test\/reset-password\?token=[0-9a-f]+/)![0]).searchParams.get('token')!;
+      expect(token).toHaveLength(64);
+      expect(stored.tokenHash).toBe(hashToken(token));
+      expect(stored.tokenHash).not.toContain(token);
+      expect(sent.to).toBe('admin@test.local');
+    });
+
+    it('is silent for unknown or non-active accounts (no enumeration)', async () => {
+      prisma.user.findUnique.mockResolvedValueOnce(null);
+      await expect(service.forgotPassword('ghost@test.local')).resolves.toBeUndefined();
+      userRow = await baseUser({ status: UserStatus.PENDING });
+      await expect(service.forgotPassword('admin@test.local')).resolves.toBeUndefined();
+      expect(mail.send).not.toHaveBeenCalled();
+    });
+
+    it('resetPassword consumes a valid token, sets the password and revokes all sessions', async () => {
+      prisma.passwordResetToken.findUnique.mockResolvedValue({ id: 't1', userId: userRow.id, usedAt: null, expiresAt: new Date(Date.now() + 60_000), user: userRow });
+      prisma.user.update.mockImplementation(async ({ data }: { data: any }) => data);
+      await service.resetPassword('a'.repeat(64), 'BrandNew12345');
+      expect(prisma.passwordResetToken.update).toHaveBeenCalledWith({ where: { id: 't1' }, data: { usedAt: expect.any(Date) } });
+      expect(prisma.user.update.mock.calls[0][0].data.mustChangePassword).toBe(false);
+      expect(prisma.session.updateMany).toHaveBeenCalledWith({ where: { userId: userRow.id, revokedAt: null }, data: { revokedAt: expect.any(Date) } });
+    });
+
+    it('rejects used, expired or unknown tokens', async () => {
+      prisma.passwordResetToken.findUnique.mockResolvedValueOnce(null);
+      await expect(service.resetPassword('x'.repeat(64), 'BrandNew12345')).rejects.toThrow('invalid or has expired');
+      prisma.passwordResetToken.findUnique.mockResolvedValueOnce({ id: 't1', userId: userRow.id, usedAt: new Date(), expiresAt: new Date(Date.now() + 60_000), user: userRow });
+      await expect(service.resetPassword('x'.repeat(64), 'BrandNew12345')).rejects.toBeInstanceOf(UnauthorizedException);
+      prisma.passwordResetToken.findUnique.mockResolvedValueOnce({ id: 't1', userId: userRow.id, usedAt: null, expiresAt: new Date(Date.now() - 1), user: userRow });
+      await expect(service.resetPassword('x'.repeat(64), 'BrandNew12345')).rejects.toBeInstanceOf(UnauthorizedException);
     });
   });
 

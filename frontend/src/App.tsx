@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from './app/hooks';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { RegisterPage } from './features/auth/pages/RegisterPage';
+import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
 import { restoreSession } from './features/auth/authSlice';
 import { AppShell } from './features/shell/AppShell';
 import { ProtectedRoute } from './features/shell/ProtectedRoute';
@@ -31,6 +33,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         element={
           <ProtectedRoute>

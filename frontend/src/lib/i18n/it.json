@@ -35,7 +35,17 @@
     "alreadyHaveAccount": "Hai già un account?",
     "accountRequestedTitle": "Account richiesto",
     "accountRequestedBody": "Un manager deve approvare il tuo account prima che tu possa accedere. Potrai accedere non appena verrà approvato.",
-    "backToSignIn": "Torna al login"
+    "backToSignIn": "Torna al login",
+    "forgotLink": "Password dimenticata?",
+    "forgotTitle": "Reimposta la password",
+    "forgotSubtitle": "Inserisci l'email del tuo account: ti invieremo un link per scegliere una nuova password.",
+    "sendLink": "Invia il link",
+    "forgotSent": "Se esiste un account per questo indirizzo, il link di reimpostazione è in arrivo. Controlla la posta (anche lo spam): il link è valido per 30 minuti.",
+    "resetTitle": "Scegli una nuova password",
+    "resetSubtitle": "Inserisci la nuova password qui sotto.",
+    "setPassword": "Imposta la nuova password",
+    "resetDone": "La password è stata cambiata. Ora puoi accedere con la nuova password.",
+    "resetInvalid": "Questo link non è valido o è scaduto. Richiedine uno nuovo."
   },
   "records": {
     "title": "Registri",
