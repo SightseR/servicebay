@@ -10,3 +10,5 @@ docker compose exec backend npx prisma db seed
 curl http://localhost:8080/api/v1/health
 ```
 App: http://localhost:8080 · API: http://localhost:8080/api/v1 · Postgres: localhost:5433
+
+Production: see `docs/DEPLOY.md` (Hetzner + Traefik runbook). Backups/restore: `infra/scripts/`.
