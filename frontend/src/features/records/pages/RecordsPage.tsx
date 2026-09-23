@@ -1,4 +1,4 @@
-import { Search, Wrench } from 'lucide-react';
+import { Download, Loader2, Search, Wrench } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { Alert } from '../../../components/Alert';
 import { Pagination } from '../../../components/Pagination';
 import { Plate } from '../../../components/Plate';
 import { Spinner } from '../../../components/Spinner';
+import { apiDownload } from '../../../lib/apiClient';
 import { formatDate } from '../../../lib/i18n/formatDate';
 import { useDebouncedValue } from '../../../lib/hooks/useDebouncedValue';
 import { VehicleHistoryDrawer } from '../components/VehicleHistoryDrawer';
@@ -22,6 +23,19 @@ export function RecordsPage() {
   const [page, setPage] = useState(1);
   const [openVehicleId, setOpenVehicleId] = useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(search, 300);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const onExport = async () => {
+    setExporting(true); setExportError(null);
+    try {
+      const params = new URLSearchParams({ lang: i18n.language === 'it' ? 'it' : 'en' });
+      if (debouncedSearch) params.set('q', debouncedSearch);
+      await apiDownload(`/records/export.csv?${params}`, 'servicebay-records.csv');
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Export failed');
+    } finally { setExporting(false); }
+  };
 
   useEffect(() => { setPage(1); }, [debouncedSearch]);
   useEffect(() => {
@@ -35,9 +49,14 @@ export function RecordsPage() {
           <h1 className="text-2xl mb-1">{t('records.title')}</h1>
           <p className="text-muted">{t('records.subtitle')}</p>
         </div>
-        <Link to="/inspect" className="btn-primary shrink-0">
-          <Wrench className="h-4 w-4" /> {t('nav.newInspection')}
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <button className="btn-ghost" onClick={onExport} disabled={exporting} title={t('records.exportHint')}>
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} {t('records.exportCsv')}
+          </button>
+          <Link to="/inspect" className="btn-primary">
+            <Wrench className="h-4 w-4" /> {t('nav.newInspection')}
+          </Link>
+        </div>
       </div>
 
       <div className="relative mb-4 max-w-md">
@@ -51,6 +70,7 @@ export function RecordsPage() {
       </div>
 
       {error && <div className="mb-4"><Alert>{error}</Alert></div>}
+      {exportError && <div className="mb-4"><Alert>{exportError}</Alert></div>}
 
       <div className="panel overflow-hidden">
         <div className="overflow-x-auto">

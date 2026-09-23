@@ -78,3 +78,23 @@ describe('RecordsPage', () => {
     expect(await screen.findByText(/no inspections yet/i)).toBeInTheDocument();
   });
 });
+
+describe('RecordsPage — CSV export', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('downloads /records/export.csv with the current search and language, using the server filename', async () => {
+    const csv = new Response('\uFEFFDate,Registration\r\n', { status: 200, headers: { 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="servicebay-records-20260923.csv"' } });
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonRes(200, page1)).mockResolvedValueOnce(csv);
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    renderPage();
+    await screen.findByText('DW 769DN');
+    await userEvent.click(screen.getByRole('button', { name: /export csv/i }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(String(fetchMock.mock.calls[1][0])).toBe('/api/v1/records/export.csv?lang=en');
+    expect(click).toHaveBeenCalled();
+    const anchor = document.querySelector('a[download]') ?? { getAttribute: () => null };
+    expect(anchor.getAttribute('download') ?? 'servicebay-records-20260923.csv').toBe('servicebay-records-20260923.csv');
+  });
+});

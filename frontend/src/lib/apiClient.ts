@@ -78,3 +78,27 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   if (!res.ok) throw new ApiError(res.status, data);
   return data as T;
 }
+
+/**
+ * Authenticated file download (e.g. CSV export): fetches with the bearer token, then hands the
+ * blob to the browser as a download using the server's suggested filename.
+ */
+export async function apiDownload(path: string, fallbackName: string): Promise<void> {
+  const run = () => fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {},
+  });
+  let res = await run();
+  if (res.status === 401) {
+    const user = await refreshOnce();
+    if (user) res = await run();
+  }
+  if (!res.ok) throw new ApiError(res.status, await res.json().catch(() => undefined));
+  const disposition = res.headers.get('content-disposition') ?? '';
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}

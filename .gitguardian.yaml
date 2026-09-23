@@ -1,0 +1,10 @@
+# GitGuardian: test fixtures and smoke scripts contain made-up credentials on purpose.
+# Real configuration lives only in .env / .env.prod, which are git-ignored.
+version: 2
+secret:
+  ignored-paths:
+    - "**/*.spec.ts"
+    - "**/*.spec.tsx"
+    - "smoke/**"
+    - "**/CHUNK-*.md"
+    - "**/HOTFIX-*.md"

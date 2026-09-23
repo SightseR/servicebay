@@ -109,6 +109,15 @@ echo "== company"
 check "PUT company 200" "$(code -X PUT "$API/company" -H "$A" -H "$J" -d '{"companyName":"Smoke Garage Oy","phone":"+358 40 000 0000"}')" "200"
 check "report picks up company" "$(curl -s "$API/records/$RID/report" -H "$A" | jq_ 'o.company.companyName')" "Smoke Garage Oy"
 
+echo "== CSV export (Chunk 19)"
+CSV=$(curl -s "$API/records/export.csv?lang=it&q=$REGKEY" -H "$A" -D /tmp/sb-csv-headers.txt)
+check "csv content-type" "$(grep -i '^content-type' /tmp/sb-csv-headers.txt | tr -d '\r' | cut -d' ' -f2-)" "text/csv; charset=utf-8"
+check "csv attachment filename" "$(grep -io 'filename=\"servicebay-records-[0-9]*\.csv\"' /tmp/sb-csv-headers.txt | wc -l | tr -d ' ')" "1"
+check "csv italian header + ; delimiter" "$(echo "$CSV" | head -1 | cut -c4- | cut -d';' -f1,2)" "Data;Targa"
+check "csv has the filtered record" "$(echo "$CSV" | grep -c "$REG")" "1"
+check "csv per-field column present" "$(echo "$CSV" | head -1 | grep -c 'Oil change\|Cambio olio')" "1"
+rm -f /tmp/sb-csv-headers.txt
+
 echo "== delete permissions"
 check "admin cannot delete manager's record 403" "$(code -X DELETE "$API/records/$RID2" -H "$A")" "403"
 check "manager deletes it 204" "$(code -X DELETE "$API/records/$RID2" -H "$M")" "204"

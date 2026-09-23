@@ -59,7 +59,9 @@
     "empty": "Ancora nessuna ispezione — inizia con Nuova ispezione.",
     "recordCount_one": "{{count}} registro",
     "recordCount_other": "{{count}} registri",
-    "pageOf": "Pagina {{page}} di {{pages}}"
+    "pageOf": "Pagina {{page}} di {{pages}}",
+    "exportCsv": "Esporta CSV",
+    "exportHint": "Scarica tutti i registri corrispondenti alla ricerca attuale, una colonna per ogni voce, nella lingua corrente."
   },
   "vehicle": {
     "owner": "Proprietario",

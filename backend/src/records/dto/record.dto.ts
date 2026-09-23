@@ -40,6 +40,8 @@ export class UpdateRecordDto {
 }
 
 export class ListRecordsDto extends PaginationDto {
+  /** export only: 'en' | 'it' */
+  @IsOptional() @IsString() lang?: string;
   @IsOptional() @Transform(trim) @IsString() @MaxLength(60) q?: string;
   @IsOptional() @IsUUID('4') vehicleId?: string;
   @IsOptional() @IsDateString() from?: string;

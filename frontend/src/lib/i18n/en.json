@@ -59,7 +59,9 @@
     "empty": "No inspections yet — start with New inspection.",
     "recordCount_one": "{{count}} record",
     "recordCount_other": "{{count}} records",
-    "pageOf": "Page {{page}} of {{pages}}"
+    "pageOf": "Page {{page}} of {{pages}}",
+    "exportCsv": "Export CSV",
+    "exportHint": "Downloads all records matching the current search, one column per checklist item, in the current language."
   },
   "vehicle": {
     "owner": "Owner",
