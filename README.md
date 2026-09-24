@@ -11,4 +11,4 @@ curl http://localhost:8080/api/v1/health
 ```
 App: http://localhost:8080 · API: http://localhost:8080/api/v1 · Postgres: localhost:5433
 
-Production: see `docs/DEPLOY.md` (Hetzner + Traefik runbook). Backups/restore: `infra/scripts/`.
+Production: `docs/DEPLOY-GCP.md` (Cloud Run + Neon + Firebase Hosting, ≈€0/month — chosen for this client) or `docs/DEPLOY.md` (Hetzner + Traefik). Backups/restore: `infra/scripts/`.

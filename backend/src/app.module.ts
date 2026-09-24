@@ -10,6 +10,7 @@ import { HealthController } from './health/health.controller';
 import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RecordsModule } from './records/records.module';
+import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 
@@ -18,7 +19,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     // Global ceiling per client IP; auth endpoints override with a much stricter @Throttle.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
-    PrismaModule, MailModule, AuthModule, UsersModule, FormModule, VehiclesModule, RecordsModule, CompanyModule,
+    PrismaModule, MailModule, StorageModule, AuthModule, UsersModule, FormModule, VehiclesModule, RecordsModule, CompanyModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -7,3 +7,6 @@ uploads/
 # raw client data export — never commit
 migration/*.json
 .env.prod
+.env.gcp
+.firebaserc
+.firebase/

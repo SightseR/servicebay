@@ -5,6 +5,7 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { CompanyService } from './company.service';
 
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(16)]);
@@ -21,7 +22,7 @@ describe('CompanyService logo', () => {
     prisma.companyProfile.upsert.mockImplementation(async () => profile);
     prisma.companyProfile.update.mockImplementation(async ({ data }: { data: { logoPath: string | null } }) => { profile = { ...profile, ...data }; return profile; });
     const mod = await Test.createTestingModule({
-      providers: [CompanyService, { provide: PrismaService, useValue: prisma }, { provide: ConfigService, useValue: { get: () => dir } }],
+      providers: [CompanyService, StorageService, { provide: PrismaService, useValue: prisma }, { provide: ConfigService, useValue: { get: (k: string) => (k === 'UPLOADS_DIR' ? dir : undefined) } }],
     }).compile();
     service = mod.get(CompanyService);
   });
